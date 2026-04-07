@@ -1,0 +1,77 @@
+# ===================================================================
+# File .gitignore ini untuk proyek dengan Backend Python (FastAPI)
+# dan Frontend JavaScript (React Native / Expo)
+# Dibuat komprehensif untuk mengabaikan file yang tidak perlu.
+# ===================================================================
+
+# === File Model AI (Sangat Penting!) ===============================
+# File model AI biasanya berukuran sangat besar dan tidak
+# disarankan untuk di-push langsung ke repository Git.
+best.pt
+*.pt
+
+# === Backend (Python/FastAPI) ======================================
+
+# Abaikan folder virtual environment
+# Ini berisi library yang diinstal dan bisa dibuat ulang
+venv/
+.venv/
+env/
+.env/
+
+# Abaikan folder cache Python
+# Dibuat secara otomatis dan tidak perlu disimpan
+__pycache__/
+*.pyc
+
+# Abaikan file environment yang mungkin berisi data rahasia
+# seperti kunci API atau kata sandi database
+.env
+.env.*
+
+# Abaikan file database lokal jika ada (misal: SQLite)
+*.sqlite3
+*.db
+*.db-journal
+
+# === Frontend (React Native/Expo/Node.js) ==========================
+
+# Abaikan folder package yang sangat besar
+# Dibuat ulang dengan 'npm install' atau 'yarn install'
+node_modules/
+
+# Abaikan file log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Abaikan folder build dan file sementara dari Expo/React Native
+.expo/
+.expo-shared/
+web-build/
+dist/
+
+# Abaikan file environment frontend
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# === File Rahasia (Keystore & Sertifikat) =========================
+# Abaikan file keystore Android dan sertifikat iOS (sangat rahasia)
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# === Konfigurasi Editor/IDE ========================================
+# Abaikan folder konfigurasi spesifik untuk editor kode
+.vscode/
+.idea/
+
+# === File Sistem Operasi ===========================================
+# Abaikan file sistem operasi yang umum
+.DS_Store
+Thumbs.db
+desktop.ini
