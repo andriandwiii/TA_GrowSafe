@@ -1,30 +1,31 @@
-# ===================================================================
-# File: user.py
-# Lokasi: GuavaScan/Backend/models/user.py
-# Deskripsi: Model data SQLAlchemy untuk tabel 'pengguna'.
-# ===================================================================
-
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Index
 from sqlalchemy.sql import func
-from database import Base # Mengimpor Base dari file database.py
+from database import Base
 
 class Pengguna(Base):
-    """
-    Kelas model ini merepresentasikan tabel 'pengguna' di dalam database.
-    SQLAlchemy akan menggunakan definisi ini untuk membuat dan berinteraksi
-    dengan tabel tersebut.
-    """
-    __tablename__ = "pengguna" # Nama tabel di database
+    __tablename__ = "users"
 
-    # Mendefinisikan kolom-kolom pada tabel
-    id_pengguna = Column(Integer, primary_key=True, index=True)
-    username = Column(String(255), unique=True, index=True, nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    
-    # Kolom password akan menyimpan kata sandi yang sudah di-hash, bukan teks asli.
+    # Primary key internal (auto increment)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # ID unik pengguna — dipakai untuk relasi ke tabel lain
+    id_pengguna = Column(String(10), nullable=False, unique=True)
+
+    # Data utama
+    nama     = Column(String(100), nullable=False)
+    username = Column(String(50),  nullable=False, unique=True)
+    email    = Column(String(100), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
-    
-    # Kolom ini akan secara otomatis diisi dengan tanggal dan waktu saat
-    # data pertama kali dibuat.
-    tanggal_dibuat = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
+    # Index tambahan
+    __table_args__ = (
+        Index("ix_users_id_pengguna_username", "id_pengguna", "username"),
+    )

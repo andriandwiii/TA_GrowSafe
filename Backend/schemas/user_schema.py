@@ -1,41 +1,39 @@
-# ===================================================================
-# File: user_schema.py (Diperbarui dengan Validasi)
-# Lokasi: GuavaScan/Backend/schemas/user_schema.py
-# Deskripsi: Menambahkan validasi untuk memastikan password tidak kosong.
-# ===================================================================
-
-from pydantic import BaseModel, EmailStr, Field # 1. Impor Field dari Pydantic
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 from datetime import datetime
 
+# ── Request: Register ──────────────────────────────────────────────
 class UserCreate(BaseModel):
-    """
-    Skema untuk data yang diterima dari pengguna saat mendaftar.
-    """
+    nama: str
     username: str
     email: EmailStr
-    
-    # 2. Tambahkan validasi pada kolom password
-    # Field(..., min_length=8) berarti:
-    # ...      -> Kolom ini wajib diisi (required).
-    # min_length=8 -> Panjang minimal password adalah 8 karakter.
-    # Ini secara otomatis akan menolak string kosong.
-    password: str = Field(..., min_length=8)
+    password: str
 
+# ── Request: Login ─────────────────────────────────────────────────
+class UserLogin(BaseModel):
+    username: str   # bisa diisi username atau email
+    password: str
+
+# ── Request: Update Profile ────────────────────────────────────────
+class UserUpdate(BaseModel):
+    nama:     Optional[str] = None
+    username: Optional[str] = None
+    email:    Optional[EmailStr] = None
+    password: Optional[str] = None
+
+# ── Response: Data User (tanpa password) ───────────────────────────
 class UserResponse(BaseModel):
-    """
-    Skema untuk data pengguna yang dikirim kembali sebagai respons dari API.
-    """
-    id_pengguna: int
-    username: str
-    email: EmailStr
-    tanggal_dibuat: datetime
+    id_pengguna: str
+    nama:        str
+    username:    str
+    email:       str
+    created_at:  datetime
 
     class Config:
         from_attributes = True
 
+# ── Response: Token JWT ────────────────────────────────────────────
 class Token(BaseModel):
-    """
-    Skema untuk respons token yang diberikan setelah login berhasil.
-    """
     access_token: str
-    token_type: str
+    token_type:   str
+    user:         UserResponse  # sekalian kembalikan data user saat login

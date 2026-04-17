@@ -75,3 +75,5 @@ dist/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+Backend/serviceAccountKey.json

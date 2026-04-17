@@ -1,36 +1,54 @@
 # ===================================================================
 # File: recommendation_service.py
-# Lokasi: GuavaScan/Backend/services/recommendation_service.py
-# Deskripsi: Service ini bertugas untuk menyediakan teks rekomendasi
-#            penanganan berdasarkan nama penyakit yang terdeteksi.
+# Lokasi: GrowSafe/Backend/services/recommendation_service.py
+# Deskripsi: Menghasilkan rekomendasi penanganan black mold
+#            berdasarkan kategori risiko yang dihasilkan model Regresi.
 # ===================================================================
 
-# Data rekomendasi disimpan dalam sebuah dictionary terstruktur.
-RECOMMENDATION_DATA = {
-    "Antraknosa": {
-        "organik": "• Sanitasi Kebun (Paling Penting): Segera petik dan musnahkan (bakar atau kubur dalam tanah) semua buah, daun, dan ranting yang menunjukkan gejala.\n• Lakukan Pemangkasan: Pangkas cabang-cabang yang terlalu rimbun untuk meningkatkan sirkulasi udara.",
-        "kimiawi": "• Lakukan penyemprotan fungisida sebelum gejala muncul, terutama menjelang musim hujan.\n• Bahan Aktif yang Efektif: Mankozeb, Propineb, Klorotalonil, atau Tembaga Hidroksida."
-    },
-    "Scab": {
-        "organik": "• Pengelolaan Air: Hindari penyiraman dari atas yang membasahi daun. Siram langsung ke pangkal tanaman.\n• Jaga Jarak Tanam: Pastikan jarak tanam tidak terlalu rapat untuk sirkulasi udara yang baik.",
-        "kimiawi": "• Fungisida Berbasis Tembaga: Lakukan penyemprotan dengan fungisida yang mengandung tembaga oksiklorida atau tembaga hidroksida saat tunas baru mulai tumbuh."
-    },
-    "Red Rust": {
-        "organik": "• Pemupukan Berimbang: Pastikan tanaman mendapatkan nutrisi yang cukup (N, P, K). Tanaman yang sehat lebih tahan terhadap serangan alga.\n• Pengendalian Gulma: Bersihkan area di sekitar tanaman dari gulma.",
-        "kimiawi": "• Semprot dengan Fungisida/Algaesida: Gunakan produk yang mengandung Tembaga Hidroksida atau Tembaga Sulfat. Lakukan penyemprotan pada pagi hari."
-    },
-    "Phytophthora": {
-        "organik": "• Perbaikan Drainase Tanah: Ini adalah langkah paling krusial. Pastikan tidak ada air yang tergenang di sekitar pangkal batang.\n• Hindari Melukai Akar dan Batang: Luka bisa menjadi pintu masuk jamur.",
-        "kimiawi": "• Aplikasi Fungisida Sistemik: Gunakan fungisida sistemik dengan bahan aktif seperti Fosetil Aluminium atau Metalaksil. Siramkan ke area perakaran."
-    }
+# ── Data Rekomendasi Berdasarkan Kategori Risiko ───────────────────
+REKOMENDASI = {
+    "Rendah": (
+        "✅ Kondisi kumbung dalam keadaan baik.\n"
+        "• Pertahankan suhu antara 22°C - 28°C.\n"
+        "• Jaga kelembaban di kisaran 80% - 90%.\n"
+        "• Lakukan pemeriksaan visual baglog secara rutin setiap 2 hari sekali.\n"
+        "• Pastikan sirkulasi udara di kumbung tetap lancar."
+    ),
+    "Sedang": (
+        "⚠️ Risiko black mold mulai terdeteksi. Segera lakukan tindakan pencegahan!\n"
+        "• Periksa dan kurangi kelembaban jika melebihi 90%.\n"
+        "• Aktifkan kipas/ventilasi untuk menurunkan suhu jika di atas 28°C.\n"
+        "• Periksa baglog satu per satu, pisahkan baglog yang menunjukkan bercak hitam.\n"
+        "• Semprotkan larutan fungisida organik (misalnya trichoderma) pada area kumbung.\n"
+        "• Tingkatkan frekuensi pemeriksaan menjadi setiap hari."
+    ),
+    "Tinggi": (
+        "🚨 PERINGATAN! Risiko black mold sangat tinggi. Tindakan darurat diperlukan!\n"
+        "• SEGERA isolasi dan keluarkan baglog yang terinfeksi dari kumbung.\n"
+        "• Musnahkan baglog terinfeksi (bakar atau kubur) agar tidak menyebar.\n"
+        "• Bersihkan dan sterilkan seluruh area kumbung.\n"
+        "• Turunkan suhu kumbung secara paksa menggunakan pendingin/AC.\n"
+        "• Kurangi kelembaban di bawah 85% untuk menghambat pertumbuhan Mucor spp.\n"
+        "• Konsultasikan dengan ahli pertanian atau penyuluh setempat.\n"
+        "• Tunda pengisian baglog baru hingga kondisi kumbung kembali stabil."
+    )
 }
 
-def get_recommendation(disease_name: str) -> dict:
+def get_rekomendasi(kategori: str) -> str:
+    """Ambil teks rekomendasi berdasarkan kategori risiko."""
+    return REKOMENDASI.get(kategori, REKOMENDASI["Rendah"])
+
+
+def tentukan_kategori(risk_persen: float) -> str:
     """
-    Fungsi untuk mengambil dictionary rekomendasi berdasarkan nama penyakit.
+    Tentukan kategori risiko berdasarkan persentase risiko.
+    - Rendah  : 0%  - 40%
+    - Sedang  : 40% - 70%
+    - Tinggi  : 70% - 100%
     """
-    default_recommendation = {
-        "organik": "Tidak ada rekomendasi organik yang tersedia.",
-        "kimiawi": "Tidak ada rekomendasi kimiawi yang tersedia."
-    }
-    return RECOMMENDATION_DATA.get(disease_name, default_recommendation)
+    if risk_persen < 40:
+        return "Rendah"
+    elif risk_persen < 70:
+        return "Sedang"
+    else:
+        return "Tinggi"
