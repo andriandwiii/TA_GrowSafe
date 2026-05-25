@@ -57,6 +57,28 @@ def riwayat_prediksi(
     ).order_by(Prediksi.created_at.desc()).limit(limit).all()
 
 
+# ── GET /history/prediksi/detail/{id_prediksi} ────────────────────
+@router.get("/prediksi/detail/{id_prediksi}", response_model=PrediksiResponse)
+def detail_prediksi(
+    id_prediksi: str,
+    db: Session = Depends(get_db),
+    current_user: Pengguna = Depends(get_current_user)
+):
+    """Ambil detail satu prediksi spesifik berdasarkan ID."""
+    prediksi = db.query(Prediksi).filter(Prediksi.id_prediksi == id_prediksi).first()
+    if not prediksi:
+        raise HTTPException(status_code=404, detail="Data prediksi tidak ditemukan")
+        
+    # Validasi kepemilikan kumbung
+    kumbung = db.query(Kumbung).filter(
+        Kumbung.id_kumbung == prediksi.id_kumbung,
+        Kumbung.id_pengguna == current_user.id_pengguna
+    ).first()
+    if not kumbung:
+        raise HTTPException(status_code=403, detail="Tidak memiliki akses ke data ini")
+
+    return prediksi
+
 # ── GET /history/prediksi/{id_kumbung}/latest ─────────────────────
 @router.get("/prediksi/{id_kumbung}/latest", response_model=PrediksiResponse)
 def prediksi_terbaru(
@@ -81,3 +103,61 @@ def prediksi_terbaru(
         raise HTTPException(status_code=404, detail="Belum ada data prediksi")
 
     return latest
+
+
+# ── DELETE /history/deteksi/{id_yolo} ─────────────────────────────
+@router.delete("/deteksi/{id_yolo}")
+def hapus_riwayat_deteksi(
+    id_yolo: str,
+    db: Session = Depends(get_db),
+    current_user: Pengguna = Depends(get_current_user)
+):
+    """Hapus satu riwayat deteksi YOLO."""
+    deteksi = db.query(DeteksiYolo).filter(DeteksiYolo.id_yolo == id_yolo).first()
+    if not deteksi:
+        raise HTTPException(status_code=404, detail="Data deteksi tidak ditemukan")
+        
+    kumbung = db.query(Kumbung).filter(
+        Kumbung.id_kumbung == deteksi.id_kumbung,
+        Kumbung.id_pengguna == current_user.id_pengguna
+    ).first()
+    if not kumbung:
+        raise HTTPException(status_code=403, detail="Akses ditolak")
+
+    # Opsional: Hapus file gambar dari server jika mau
+    import os
+    if deteksi.image_path:
+        img_path = str(deteksi.image_path)
+        if os.path.exists(img_path):
+            try:
+                os.remove(img_path)
+            except:
+                pass
+
+    db.delete(deteksi)
+    db.commit()
+    return {"message": "Riwayat deteksi berhasil dihapus"}
+
+
+# ── DELETE /history/prediksi/{id_prediksi} ────────────────────────
+@router.delete("/prediksi/{id_prediksi}")
+def hapus_riwayat_prediksi(
+    id_prediksi: str,
+    db: Session = Depends(get_db),
+    current_user: Pengguna = Depends(get_current_user)
+):
+    """Hapus satu riwayat prediksi panen."""
+    prediksi = db.query(Prediksi).filter(Prediksi.id_prediksi == id_prediksi).first()
+    if not prediksi:
+        raise HTTPException(status_code=404, detail="Data prediksi tidak ditemukan")
+        
+    kumbung = db.query(Kumbung).filter(
+        Kumbung.id_kumbung == prediksi.id_kumbung,
+        Kumbung.id_pengguna == current_user.id_pengguna
+    ).first()
+    if not kumbung:
+        raise HTTPException(status_code=403, detail="Akses ditolak")
+
+    db.delete(prediksi)
+    db.commit()
+    return {"message": "Riwayat prediksi berhasil dihapus"}

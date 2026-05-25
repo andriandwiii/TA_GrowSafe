@@ -7,7 +7,8 @@ import {
   ScrollView, 
   TouchableOpacity, 
   ActivityIndicator,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -83,6 +84,29 @@ export default function HistoryDetailScreen() {
     fetchHistory();
   }, [id, kumbungAktif]);
 
+  const handleDelete = () => {
+    Alert.alert(
+      "Hapus Riwayat",
+      "Apakah Anda yakin ingin menghapus data deteksi ini?",
+      [
+        { text: "Batal", style: "cancel" },
+        { 
+          text: "Hapus", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await apiClient.delete(`/history/deteksi/${id}`);
+              router.back();
+            } catch (error) {
+              console.error("Gagal menghapus data:", error);
+              Alert.alert("Error", "Gagal menghapus riwayat deteksi.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -95,7 +119,7 @@ export default function HistoryDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       
       {/* Background Decor */}
       <View style={styles.bgDecorTop} />
@@ -110,7 +134,15 @@ export default function HistoryDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Hasil Deteksi</Text>
-        <View style={{ width: 44 }} /> {/* Spacer */}
+        
+        {/* Delete Button */}
+        <TouchableOpacity 
+          onPress={handleDelete} 
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

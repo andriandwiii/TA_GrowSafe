@@ -16,7 +16,7 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -37,6 +37,7 @@ const { width } = Dimensions.get('window');
 const DashboardScreen = () => {
   const router = useRouter();
   const { user, setKumbungAktif } = useAuth();
+  const insets = useSafeAreaInsets();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Menangani klik titik tiga pada kartu sensor
@@ -60,6 +61,8 @@ const DashboardScreen = () => {
     statusMessage: 'Mengambil data dari server...',
     theme: 'offline' // 'optimal', 'waspada', 'bahaya', 'kritis', 'dingin', 'offline'
   });
+  
+  const [unreadCount, setUnreadCount] = useState(0);
   const [activeKumbungId, setActiveKumbungId] = useState<string | null>(null);
 
   const getKumbungStatus = (s: number, k: number) => {
@@ -140,9 +143,41 @@ const DashboardScreen = () => {
     }
   };
 
+  const fetchUnreadNotifications = async () => {
+    try {
+      const response = await apiClient.get('/notification/unread');
+      setUnreadCount(response.data.length || 0);
+    } catch (error) {
+      console.log('Gagal ambil unread notif:', error);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      loadInitialData();
+      let intervalId: ReturnType<typeof setInterval>;
+      
+      const initializeAndPoll = async () => {
+        await loadInitialData();
+        await fetchUnreadNotifications();
+        
+        // Setelah load initial data, mulai polling setiap 5 detik
+        intervalId = setInterval(async () => {
+          const kId = await SecureStore.getItemAsync('activeKumbungId');
+          if (kId) {
+            // Fetch tanpa memicu loading spinner (silent refresh)
+            await fetchSensorData(kId);
+            await fetchUnreadNotifications();
+          }
+        }, 5000);
+      };
+
+      initializeAndPoll();
+
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
     }, [])
   );
 
@@ -164,14 +199,14 @@ const DashboardScreen = () => {
   const themeStyle = getThemeStyles();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+    <View style={styles.mainContainer}>
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Background Decor */}
       <View style={styles.bgDecorTop} />
 
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -194,7 +229,7 @@ const DashboardScreen = () => {
             onPress={() => router.push('/notifikasi' as any)}
           >
             <Ionicons name="notifications-outline" size={24} color="#1E293B" />
-            <View style={styles.notificationBadge} />
+            {unreadCount > 0 && <View style={styles.notificationBadge} />}
           </TouchableOpacity>
         </Animated.View>
 
@@ -300,12 +335,12 @@ const DashboardScreen = () => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  mainContainer: {
     flex: 1,
     backgroundColor: '#F4F7FB',
   },

@@ -99,7 +99,7 @@ export default function KumbungFormScreen() {
     <SafeAreaView style={styles.container}>
       {isLoading && <CustomLoading fullScreen message={isEditMode ? "Memproses..." : "Menyimpan data..."} />}
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       <View style={styles.bgDecorTop} />
 
       <View style={styles.header}>

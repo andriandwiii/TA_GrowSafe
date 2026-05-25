@@ -18,50 +18,50 @@ import Colors from '../../constants/Colors';
 import EnsiklopediaCard, { EnsiklopediaItem } from '../../components/EnsiklopediaCard';
 
 // Data ensiklopedia disimpan secara built-in di dalam aplikasi.
-// Pastikan Anda sudah menyiapkan gambar-gambar ini di folder assets/images.
+// Karena data edukasi jamur tiram jarang berubah, sangat wajar (dan disarankan) 
+// untuk menyimpannya secara statis di frontend (tidak perlu database/backend khusus).
 const ENCYCLOPEDIA_DATA: EnsiklopediaItem[] = [
   {
-    id: 'antraknosa',
-    name: 'Antraknosa',
-    description: 'Antraknosa adalah salah satu penyakit paling merusak pada tanaman jambu biji, terutama di daerah tropis dengan kelembapan tinggi...',
+    id: 'black-mold',
+    name: 'Black Mold (Mucor spp.)',
+    description: 'Black Mold atau kapang hitam adalah jenis kontaminasi jamur liar yang tumbuh pada media tanam (baglog). Sering dipicu oleh suhu ruangan yang terlalu panas dan sirkulasi udara yang buruk.',
     image: require('../../assets/images/penyakit_antraknosa.jpg'), 
     tag: { text: 'Bahaya', color: Colors.light.error ?? '#EF4444' },
   },
   {
-    id: 'phytophthora',
-    name: 'Phytophthora',
-    description: 'Penyakit Phytophthora sangat agresif dan cepat menyebar, disebabkan oleh organisme mirip jamur yang hidup di tanah...',
+    id: 'green-mold',
+    name: 'Green Mold (Trichoderma)',
+    description: 'Trichoderma adalah penyakit paling ganas pada budidaya jamur. Spora berwarna hijau ini menyebar sangat cepat dan memakan miselium jamur tiram. Baglog yang terkena harus segera dibuang.',
     image: require('../../assets/images/penyakit_phytophthora.jpg'), 
-    tag: { text: 'Bahaya', color: Colors.light.error ?? '#EF4444' },
+    tag: { text: 'Kritis', color: '#B91C1C' },
   },
   {
-    id: 'red-rust',
-    name: 'Red Rust',
-    description: 'Berbeda dengan penyakit lainnya, Red Rust tidak disebabkan oleh jamur, melainkan oleh alga parasit. Penyakit ini umumnya tidak mematikan...',
+    id: 'neurospora',
+    name: 'Orange Mold (Neurospora)',
+    description: 'Kapang jingga atau oncom (Neurospora) sering muncul di ujung kapas baglog. Biasanya disebabkan oleh pasteurisasi serbuk kayu yang kurang matang atau kelembaban yang terlalu jenuh.',
     image: require('../../assets/images/penyakit_red_rust.jpg'), 
     tag: { text: 'Waspada', color: Colors.light.warning ?? '#F59E0B' },
   },
   {
-    id: 'scab',
-    name: 'Scab',
-    description: 'Penyakit Scab atau Kudis adalah penyakit jamur yang secara spesifik merusak penampilan luar buah dan daun...',
+    id: 'hama-gurem',
+    name: 'Hama Gurem (Tungau)',
+    description: 'Serangga kecil seperti kutu yang memakan miselium dan tubuh buah jamur. Tungau berkembang biak subur di lingkungan yang pengap, kotor, dan sirkulasi udaranya tertutup.',
     image: require('../../assets/images/penyakit_scab.jpg'), 
     tag: { text: 'Waspada', color: Colors.light.warning ?? '#F59E0B' },
   },
 ];
 
-
 const EnsiklopediaScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       
       {/* Background Decor */}
       <View style={styles.bgDecorTop} />
 
       <Animated.View entering={FadeIn.delay(100)} style={styles.header}>
         <Text style={styles.headerTitle}>Ensiklopedia</Text>
-        <Text style={styles.headerSubtitle}>Kamus referensi deteksi penyakit tanaman</Text>
+        <Text style={styles.headerSubtitle}>Kamus referensi penyakit & hama Jamur Tiram</Text>
       </Animated.View>
 
       <FlatList

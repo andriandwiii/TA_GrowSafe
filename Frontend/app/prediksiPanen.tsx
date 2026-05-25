@@ -6,6 +6,8 @@ import { useRouter, Stack } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Colors from '../constants/Colors';
 import CustomLoading from '../components/CustomLoading';
+import apiClient from '../services/api';
+import { useAuth } from '../services/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -13,30 +15,99 @@ const PrediksiPanenScreen = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data sesuai dengan contoh gambar/output dari user
-  const predictionData = {
-    estimasiPanen: 26.8,
-    jumlahBaglog: 100,
-    risiko: 33.02,
-    efisiensi: 67.0,
-    kategoriRisiko: 'Rendah',
-    panenTanpaRisiko: 40.0,
-    estimasiKerugian: -13.2,
-    rumus: 'panen = 100 baglog × 0.4 kg × (1 − 33.0% / 100) = 100 × 0.4 × 0.6698 = 26.79 kg',
-    rekomendasi: 'Kondisi Baik. Pertahankan kondisi saat ini. Pantau sensor secara rutin. Tidak diperlukan intervensi khusus.',
-  };
+  const { kumbungAktif } = useAuth();
+  const [predictionData, setPredictionData] = useState<any>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    const runPrediction = async () => {
+      if (!kumbungAktif) return;
+      try {
+        setIsLoading(true);
+
+        // 1. Ambil data sensor terbaru
+        let suhu = 25.0;
+        let kelembaban = 80.0;
+        let total_led_menyala = 0;
+        try {
+          const sensorRes = await apiClient.get(`/sensor/${kumbungAktif}/latest`);
+          if (sensorRes.data) {
+            suhu = sensorRes.data.suhu;
+            kelembaban = sensorRes.data.kelembaban;
+            total_led_menyala = sensorRes.data.total_led_menyala || 0;
+          }
+        } catch (e) {
+          console.log('Tidak ada data sensor terbaru, menggunakan default');
+        }
+
+        // 2. Ambil id_yolo terbaru dari riwayat
+        let id_yolo = null;
+        try {
+          const deteksiRes = await apiClient.get(`/history/deteksi/${kumbungAktif}?limit=1`);
+          if (deteksiRes.data && deteksiRes.data.length > 0) {
+            id_yolo = deteksiRes.data[0].id_yolo;
+          }
+        } catch (e) {
+          console.log('Tidak ada histori deteksi terbaru');
+        }
+
+        // 3. Ambil data kumbung untuk mendapatkan kapasitas baglog
+        let kapasitasBaglog = 100;
+        try {
+          const kumbungRes = await apiClient.get(`/kumbung/${kumbungAktif}`);
+          if (kumbungRes.data && kumbungRes.data.kapasitas_baglog) {
+            kapasitasBaglog = kumbungRes.data.kapasitas_baglog;
+          }
+        } catch (e) {
+          console.log('Gagal mengambil data kumbung');
+        }
+
+        // 4. Panggil POST /predict/risk
+        const formData = new FormData();
+        formData.append('id_kumbung', kumbungAktif);
+        formData.append('suhu', suhu.toString());
+        formData.append('kelembaban', kelembaban.toString());
+        formData.append('total_led_menyala', total_led_menyala.toString());
+        if (id_yolo) {
+          formData.append('id_yolo', id_yolo);
+        }
+
+        const predictRes = await apiClient.post('/predict/risk', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        const result = predictRes.data;
+        const risiko = result.risk_persen || 0;
+        const efisiensi = 100 - risiko;
+        const estimasiPanen = result.predicted_panen_kg || 0;
+        const panenTanpaRisiko = kapasitasBaglog * 0.4;
+        const estimasiKerugian = panenTanpaRisiko - estimasiPanen;
+
+        setPredictionData({
+          estimasiPanen: estimasiPanen.toFixed(2),
+          jumlahBaglog: kapasitasBaglog,
+          risiko: risiko.toFixed(2),
+          efisiensi: efisiensi.toFixed(1),
+          kategoriRisiko: result.kategori_risiko || 'Aman',
+          panenTanpaRisiko: panenTanpaRisiko.toFixed(2),
+          estimasiKerugian: estimasiKerugian > 0 ? `-${estimasiKerugian.toFixed(2)}` : '0',
+          rumus: `panen = ${kapasitasBaglog} baglog × 0.4 kg × (1 − ${risiko.toFixed(1)}% / 100) = ${estimasiPanen.toFixed(2)} kg`,
+          rekomendasi: result.rekomendasi_risiko || 'Kondisi baik, tidak ada rekomendasi spesifik.',
+        });
+
+      } catch (error) {
+        console.error('Error saat melakukan prediksi:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    runPrediction();
+  }, [kumbungAktif]);
 
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
 
       <View style={styles.bgDecorTop} />
 
@@ -53,7 +124,7 @@ const PrediksiPanenScreen = () => {
         <View style={{ width: 44 }} />
       </View>
 
-      {isLoading ? (
+      {isLoading || !predictionData ? (
         <CustomLoading fullScreen message="Menganalisis potensi panen..." />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -81,16 +152,16 @@ const PrediksiPanenScreen = () => {
           <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.gridContainer}>
             {/* Card Risiko */}
             <View style={styles.gridCard}>
-              <Text style={styles.gridLabel}>RISIKO BLACK MOLD</Text>
-              <Text style={[styles.gridValue, { color: '#059669' }]}>{predictionData.risiko}%</Text>
+              <Text style={styles.gridLabel}>RISIKO KONTAMINASI</Text>
+              <Text style={[styles.gridValue, { color: predictionData.risiko > 30 ? '#EF4444' : '#059669' }]}>{predictionData.risiko}%</Text>
             </View>
 
             {/* Card Kategori */}
             <View style={styles.gridCard}>
               <Text style={styles.gridLabel}>KATEGORI RISIKO</Text>
               <View style={styles.categoryBadge}>
-                <Ionicons name="checkmark-circle" size={16} color="#059669" style={{ marginRight: 4 }} />
-                <Text style={styles.categoryText}>{predictionData.kategoriRisiko}</Text>
+                <Ionicons name={predictionData.risiko > 30 ? "warning" : "checkmark-circle"} size={16} color={predictionData.risiko > 30 ? "#EF4444" : "#059669"} style={{ marginRight: 4 }} />
+                <Text style={[styles.categoryText, { color: predictionData.risiko > 30 ? "#EF4444" : "#059669" }]}>{predictionData.kategoriRisiko}</Text>
               </View>
             </View>
 
@@ -114,7 +185,7 @@ const PrediksiPanenScreen = () => {
 
           {/* Rekomendasi */}
           <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.recommendationCard}>
-            <Ionicons name="checkmark-circle" size={24} color="#059669" style={{ marginTop: 2 }} />
+            <Ionicons name="information-circle" size={24} color="#059669" style={{ marginTop: 2 }} />
             <Text style={styles.recommendationText}>{predictionData.rekomendasi}</Text>
           </Animated.View>
 

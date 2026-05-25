@@ -43,7 +43,7 @@ async def deteksi_gambar(
 ):
     """Upload foto baglog → Deteksi black mold dengan YOLO."""
 
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File harus berupa gambar")
 
     kumbung = db.query(Kumbung).filter(
@@ -95,11 +95,20 @@ def prediksi_risiko(
     if not kumbung:
         raise HTTPException(status_code=404, detail="Kumbung tidak ditemukan")
 
+    # ── MENGHITUNG AVERAGE INFECTED AREA (Lebih Efektif) ──
     infected_area = 0.0
-    if id_yolo:
-        deteksi = db.query(DeteksiYolo).filter(DeteksiYolo.id_yolo == id_yolo).first()
-        if deteksi:
-            infected_area = deteksi.infected_area_percent or 0.0
+    
+    # Ambil 5 riwayat deteksi terakhir dari kumbung ini (sampling populasi)
+    recent_detections = db.query(DeteksiYolo).filter(
+        DeteksiYolo.id_kumbung == id_kumbung
+    ).order_by(DeteksiYolo.created_at.desc()).limit(5).all()
+
+    if recent_detections:
+        total_infected = sum((d.infected_area_percent or 0.0) for d in recent_detections) # type: ignore
+        infected_area = float(total_infected / len(recent_detections)) # type: ignore
+    
+    # (Opsional) Jika user mengirim id_yolo spesifik, kita bisa memberikan bobot lebih 
+    # atau cukup gunakan nilai average dari populasi di atas. Kita gunakan average agar lebih robust.
 
     hasil = predict_risk(
         suhu                  = suhu,
@@ -109,7 +118,7 @@ def prediksi_risiko(
     )
 
     panen_kg = predict_panen(
-        kapasitas_baglog = kumbung.kapasitas_baglog or 0,
+        kapasitas_baglog = kumbung.kapasitas_baglog or 0, # type: ignore
         risk_persen      = hasil["risk_persen"]
     )
 
@@ -129,7 +138,7 @@ def prediksi_risiko(
         konten = buat_konten_notifikasi(
             kategori     = hasil["kategori_risiko"],
             risk_persen  = hasil["risk_persen"],
-            nama_kumbung = kumbung.nama_kumbung
+            nama_kumbung = str(kumbung.nama_kumbung) if kumbung.nama_kumbung else "Kumbung"
         )
         notif = Notifikasi(
             id_notifikasi = generate_id_notifikasi(db),

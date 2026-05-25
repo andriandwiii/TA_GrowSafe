@@ -23,7 +23,7 @@ export default function EncyclopediaDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       
       {/* Background Decor */}
       <View style={styles.bgDecorTop} />

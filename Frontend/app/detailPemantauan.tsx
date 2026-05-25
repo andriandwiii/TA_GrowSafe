@@ -132,13 +132,7 @@ const DetailPemantauanScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
-      
-      {/* Background Decor */}
-      <View style={styles.bgDecorTop} />
-
-      {/* Header */}
-      <View style={styles.header}>
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" /><View style={styles.bgDecorTop} /><View style={styles.header}>
         <TouchableOpacity 
           onPress={() => router.back()} 
           style={styles.backButton}
@@ -147,15 +141,10 @@ const DetailPemantauanScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detail Pemantauan</Text>
-        <View style={{ width: 44 }} /> {/* Spacer */}
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Ringkasan Saat Ini */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.summaryContainer}>
-          {/* Card Suhu */}
-          <View style={styles.summaryCard}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}><Animated.View entering={FadeInDown.delay(100).springify()} style={styles.summaryContainer}><View style={styles.summaryCard}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.iconBg, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="thermometer" size={20} color="#EF4444" />
@@ -180,10 +169,7 @@ const DetailPemantauanScreen = () => {
                 <Text style={[styles.statsValue, { color: '#EF4444' }]}>{data.suhu.maksimum}°</Text>
               </View>
             </View>
-          </View>
-
-          {/* Card Kelembaban */}
-          <View style={styles.summaryCard}>
+          </View><View style={styles.summaryCard}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.iconBg, { backgroundColor: '#E0F2FE' }]}>
                 <Ionicons name="water" size={20} color="#0284C7" />
@@ -208,10 +194,7 @@ const DetailPemantauanScreen = () => {
                 <Text style={[styles.statsValue, { color: '#D97706' }]}>{data.kelembaban.minimum}%</Text>
               </View>
             </View>
-          </View>
-
-          {/* Card LED */}
-          <View style={styles.summaryCard}>
+          </View><View style={styles.summaryCard}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.iconBg, { backgroundColor: '#FFF8E1' }]}>
                 <Ionicons name="bulb" size={20} color="#FFB300" />
@@ -232,10 +215,7 @@ const DetailPemantauanScreen = () => {
               </View>
             </View>
           </View>
-        </Animated.View>
-
-        {/* Grafik Riwayat (Mock CSS) */}
-        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.chartCard}>
+        </Animated.View><Animated.View entering={FadeInDown.delay(200).springify()} style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Grafik Hari Ini</Text>
             <View style={styles.legendRow}>
@@ -250,31 +230,19 @@ const DetailPemantauanScreen = () => {
             </View>
           </View>
 
-          <View style={styles.chartArea}>
-            {/* Garis Horizontal Latar */}
+          <View style={styles.chartArea}><View style={styles.gridLine} />
             <View style={styles.gridLine} />
-            <View style={styles.gridLine} />
-            <View style={styles.gridLine} />
-
-            {/* Bar Grafik */}
-            <View style={styles.barsContainer}>
+            <View style={styles.gridLine} /><View style={styles.barsContainer}>
               {data.grafikMocks.map((item, index) => (
                 <View key={index} style={styles.barGroup}>
-                  <View style={styles.barColumn}>
-                    {/* Bar Kelembaban */}
-                    <View style={[styles.bar, { height: `${item.kelembaban}%`, backgroundColor: '#BAE6FD' }]} />
-                    {/* Bar Suhu (Lebih menonjol/di depan atau samping) */}
-                    <View style={[styles.bar, styles.barTemp, { height: `${item.suhu}%`, backgroundColor: '#FCA5A5' }]} />
+                  <View style={styles.barColumn}><View style={[styles.bar, { height: `${item.kelembaban}%`, backgroundColor: '#BAE6FD' }]} /><View style={[styles.bar, styles.barTemp, { height: `${item.suhu}%`, backgroundColor: '#FCA5A5' }]} />
                   </View>
                   <Text style={styles.timeLabel}>{item.jam}</Text>
                 </View>
               ))}
             </View>
           </View>
-        </Animated.View>
-
-        {/* Insight / Analisis */}
-        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.insightCard}>
+        </Animated.View><Animated.View entering={FadeInDown.delay(300).springify()} style={styles.insightCard}>
           <View style={styles.insightHeader}>
             <Ionicons name="bulb" size={24} color="#F59E0B" />
             <Text style={styles.insightTitle}>Analisis AI</Text>

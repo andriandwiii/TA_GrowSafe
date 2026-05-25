@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, FlatList, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, FlatList, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import Colors from '../constants/Colors';
+import apiClient from '../services/api';
+import CustomLoading from '../components/CustomLoading';
 
 // Tipe data notifikasi sesuai dengan deskripsi
 type NotificationItem = {
@@ -15,43 +17,49 @@ type NotificationItem = {
   isi: string;
   status_baca: 'Belum' | 'Sudah';
   created_at: string;
-  kategori: 'Sedang' | 'Tinggi';
+  kategori: 'Sedang' | 'Tinggi' | string;
 };
-
-// Data mock (sementara)
-const mockNotifications: NotificationItem[] = [
-  {
-    id_notifikasi: 'NTF001',
-    id_pengguna: 'USR001',
-    id_prediksi: 'PRD005',
-    judul: '🚨 BAHAYA! Risiko Black Mold Sangat Tinggi',
-    isi: "Kumbung 'Kumbung 1' menunjukkan risiko black mold 82.1%!\nSegera periksa dan isolasi baglog yang terinfeksi.",
-    status_baca: 'Belum',
-    created_at: '2025-07-01 14:30:00',
-    kategori: 'Tinggi',
-  },
-  {
-    id_notifikasi: 'NTF002',
-    id_pengguna: 'USR001',
-    id_prediksi: 'PRD004',
-    judul: '⚠️ Peringatan Risiko Black Mold',
-    isi: "Kumbung 'Kumbung 1' menunjukkan risiko black mold 55.3%.\nLakukan tindakan pencegahan segera.",
-    status_baca: 'Sudah',
-    created_at: '2025-06-30 09:15:00',
-    kategori: 'Sedang',
-  }
-];
 
 const NotifikasiScreen = () => {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await apiClient.get('/notification/');
+      // urutkan dari yang terbaru
+      const data = response.data.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setNotifications(data);
+    } catch (error) {
+      console.error("Gagal mengambil notifikasi:", error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchNotifications();
+  };
 
   const unreadCount = notifications.filter(n => n.status_baca === 'Belum').length;
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id_notifikasi === id ? { ...n, status_baca: 'Sudah' } : n)
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      await apiClient.put(`/notification/${id}/read`);
+      setNotifications(prev => 
+        prev.map(n => n.id_notifikasi === id ? { ...n, status_baca: 'Sudah' } : n)
+      );
+    } catch (error) {
+      console.error("Gagal menandai notifikasi dibaca:", error);
+    }
   };
 
   const markAllAsRead = () => {
@@ -61,8 +69,14 @@ const NotifikasiScreen = () => {
       { text: 'Batal', style: 'cancel' },
       { 
         text: 'Ya', 
-        onPress: () => {
-          setNotifications(prev => prev.map(n => ({ ...n, status_baca: 'Sudah' })));
+        onPress: async () => {
+          try {
+            await apiClient.put('/notification/read-all');
+            setNotifications(prev => prev.map(n => ({ ...n, status_baca: 'Sudah' })));
+          } catch (error) {
+            console.error("Gagal menandai semua dibaca:", error);
+            Alert.alert("Error", "Gagal menghubungi server.");
+          }
         } 
       }
     ]);
@@ -74,8 +88,14 @@ const NotifikasiScreen = () => {
       { 
         text: 'Hapus', 
         style: 'destructive',
-        onPress: () => {
-          setNotifications(prev => prev.filter(n => n.id_notifikasi !== id));
+        onPress: async () => {
+          try {
+            await apiClient.delete(`/notification/${id}`);
+            setNotifications(prev => prev.filter(n => n.id_notifikasi !== id));
+          } catch (error) {
+            console.error("Gagal menghapus notifikasi:", error);
+            Alert.alert("Error", "Gagal menghapus notifikasi.");
+          }
         } 
       }
     ]);
@@ -86,7 +106,9 @@ const NotifikasiScreen = () => {
       markAsRead(item.id_notifikasi);
     }
     // Arahkan ke halaman detail prediksi berdasarkan id_prediksi (bisa disesuaikan route-nya)
-    router.push(`/detail/${item.id_prediksi}` as any);
+    if (item.id_prediksi) {
+      router.push(`/detail-prediksi/${item.id_prediksi}` as any);
+    }
   };
 
   // Fungsi untuk memformat tanggal (sederhana)
@@ -136,10 +158,19 @@ const NotifikasiScreen = () => {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F4F7FB' }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <CustomLoading message="Memuat Notifikasi..." />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F7FB" />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       
       <View style={styles.bgDecorTop} />
 
@@ -171,6 +202,9 @@ const NotifikasiScreen = () => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={[Colors.light.primary || "#2E7D32"]} />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="notifications-off-outline" size={64} color="#CBD5E1" style={{ marginBottom: 16 }} />
