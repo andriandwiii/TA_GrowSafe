@@ -3,11 +3,22 @@
 // Lokasi: Frontend/services/api.js
 // ===================================================================
 
+import Constants from 'expo-constants';
 import axios from 'axios';
 
-// Ganti IP ini dengan IP laptop kamu (hasil ipconfig)
-// Pastikan HP dan laptop terhubung ke WiFi yang sama
-const API_BASE_URL = 'http://192.168.0.111:8000';
+// Fallback IP jika aplikasi di-*build* (APK) atau gagal mendeteksi IP otomatis
+let API_BASE_URL = 'http://192.168.0.111:8000';
+
+if (__DEV__) {
+  // Mendapatkan IP laptop yang menjalankan server Metro Expo secara otomatis
+  const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost || Constants?.manifest2?.extra?.expoGo?.debuggerHost;
+  
+  if (hostUri) {
+    const laptopIp = hostUri.split(':')[0]; // Ambil IP saja tanpa port metro (misal 192.168.1.5)
+    API_BASE_URL = `http://${laptopIp}:8000`; // Ganti dengan port backend Anda (8000)
+    console.log(`[GrowSafe API] Backend otomatis terhubung ke: ${API_BASE_URL}`);
+  }
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -181,6 +181,9 @@ const PrediksiPanenScreen = () => {
           {/* Rumus Perhitungan */}
           <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.formulaCard}>
             <Text style={styles.formulaText}>{predictionData.rumus}</Text>
+            <Text style={[styles.formulaText, { fontSize: 11, color: '#64748B', marginTop: 12, fontStyle: 'italic', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }]}>
+              *Asumsi: 0.4 kg adalah rata-rata standar produktivitas/hasil panen ideal yang dapat dihasilkan oleh 1 baglog jamur tiram selama satu siklus hidupnya.
+            </Text>
           </Animated.View>
 
           {/* Rekomendasi */}
