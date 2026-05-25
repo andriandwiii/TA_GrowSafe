@@ -1,27 +1,35 @@
 // ===================================================================
 // File: pindaiKamera.tsx
 // Lokasi: Frontend/app/pindaiKamera.tsx
-// Deskripsi: Diperbarui dengan impor useIsFocused yang benar.
+// Deskripsi: Layar pemindaian kamera dengan UI profesional.
 // ===================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, StatusBar, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, CameraView } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Colors from '../constants/Colors';
 import { useRouter, Stack } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native'; // <-- 1. Impor useIsFocused dari sini
+import { useIsFocused } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
+import CustomLoading from '../components/CustomLoading';
 import apiClient from '../services/api';
+import { useAuth } from '../services/AuthContext';
+
+const { width } = Dimensions.get('window');
 
 const ScanScreen = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
-  const isFocused = useIsFocused(); // Hook untuk mendeteksi apakah layar sedang fokus
+  const isFocused = useIsFocused();
+  const { kumbungAktif } = useAuth();
 
   useEffect(() => {
-    // Meminta izin kamera saat komponen pertama kali dimuat
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === 'granted');
@@ -32,16 +40,20 @@ const ScanScreen = () => {
     if (cameraRef.current && !isScanning) {
       setIsScanning(true);
       try {
+        if (!kumbungAktif) {
+          Toast.show({ type: 'error', text1: 'Pilih Kumbung', text2: 'Tidak ada kumbung yang aktif saat ini.' });
+          return;
+        }
+
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, isImageMirror: false });
         
         const formData = new FormData();
+        formData.append('id_kumbung', kumbungAktif);
         formData.append('file', {
           uri: photo.uri,
           name: 'photo.jpg',
           type: 'image/jpeg',
         } as any);
-
-        Alert.alert('Menganalisis...', 'Gambar sedang diproses, mohon tunggu.');
 
         const response = await apiClient.post('/predict/image', formData, {
           headers: {
@@ -50,75 +62,169 @@ const ScanScreen = () => {
         });
         
         const newHistoryItem = response.data;
-        // Menggunakan replace agar pengguna tidak bisa kembali ke halaman kamera setelah pindai berhasil
-        router.replace(`/detail/${newHistoryItem.id_riwayat}` as any);
+        router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
 
       } catch (error: any) {
         console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
-        Alert.alert('Error', error.response?.data?.detail || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.');
+        Toast.show({
+          type: 'error',
+          text1: 'Gagal Pemindaian',
+          text2: error.response?.data?.detail || 'Pastikan Anda terhubung ke internet.',
+        });
       } finally {
         setIsScanning(false);
       }
     }
   };
 
-  // Tampilan loading atau jika layar tidak fokus
+  const handlePickImage = async () => {
+    if (isScanning) return;
+    
+    // Request permission to access media library
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Toast.show({
+        type: 'error',
+        text1: 'Izin Ditolak',
+        text2: 'Kami membutuhkan akses ke galeri foto Anda.',
+      });
+      return;
+    }
+
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        if (!kumbungAktif) {
+          Toast.show({ type: 'error', text1: 'Pilih Kumbung', text2: 'Tidak ada kumbung yang aktif saat ini.' });
+          return;
+        }
+
+        setIsScanning(true);
+        const photo = result.assets[0];
+        
+        const formData = new FormData();
+        formData.append('id_kumbung', kumbungAktif);
+        formData.append('file', {
+          uri: photo.uri,
+          type: 'image/jpeg',
+          name: 'upload.jpg',
+        } as any);
+        
+        const response = await apiClient.post('/predict/image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        const newHistoryItem = response.data;
+        router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
+      }
+    } catch (error: any) {
+      console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Gagal Mengunggah',
+        text2: error.response?.data?.detail || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.',
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   if (!isFocused || hasPermission === null) {
-    return <View style={styles.permissionContainer}><ActivityIndicator size="large" color={Colors.light.primary} /></View>;
+    return <CustomLoading fullScreen message="Menginisialisasi kamera..." />;
   }
 
-  // Tampilan jika izin kamera ditolak
   if (hasPermission === false) {
     return (
       <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
         <Stack.Screen options={{ headerShown: true, headerTitle: 'Izin Kamera' }} />
         <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>Aplikasi memerlukan izin kamera untuk berfungsi.</Text>
-          <Text style={styles.permissionSubText}>Silakan berikan izin melalui pengaturan ponsel Anda.</Text>
+          <Ionicons name="camera-outline" size={64} color="#CBD5E1" style={{ marginBottom: 16 }} />
+          <Text style={styles.permissionText}>Akses Kamera Diperlukan</Text>
+          <Text style={styles.permissionSubText}>Growsafe membutuhkan akses kamera Anda untuk memindai jamur. Silakan berikan izin melalui pengaturan perangkat.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Tampilan utama dengan kamera
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="light-content" />
-      <CameraView style={StyleSheet.absoluteFillObject} ref={cameraRef} facing="back">
+      <StatusBar barStyle="light-content" backgroundColor="black" />
+      
+      <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} facing="back">
         <SafeAreaView style={styles.overlay}>
-          {/* Bagian Atas: Tombol Tutup */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-              <Ionicons name="close" size={32} color="white" />
-            </TouchableOpacity>
-          </View>
+          {isScanning && <CustomLoading fullScreen message="Menganalisis gambar..." />}
           
-          {/* Bagian Tengah: Instruksi dan Bingkai Fokus */}
+          {/* Header */}
+          <Animated.View entering={FadeInUp.delay(100).springify()} style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.iconButton} activeOpacity={0.7}>
+              <Ionicons name="close" size={28} color="white" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Pindai Jamur</Text>
+            </View>
+            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+              <Ionicons name="flash-outline" size={24} color="white" />
+            </TouchableOpacity>
+          </Animated.View>
+          
+          {/* Center Focus Area */}
           <View style={styles.content}>
-            <Text style={styles.instructionText}>Posisikan daun atau buah di tengah layar</Text>
-            <View style={styles.focusFrame} />
+            <Animated.Text entering={FadeIn.delay(200)} style={styles.instructionText}>
+              Arahkan kamera ke jamur atau baglog
+            </Animated.Text>
+            
+            <Animated.View entering={FadeIn.delay(300).duration(600)} style={styles.focusFrameContainer}>
+              <View style={styles.focusFrame}>
+                {/* Corner brackets */}
+                <View style={[styles.corner, styles.topLeft]} />
+                <View style={[styles.corner, styles.topRight]} />
+                <View style={[styles.corner, styles.bottomLeft]} />
+                <View style={[styles.corner, styles.bottomRight]} />
+              </View>
+            </Animated.View>
           </View>
 
-          {/* Bagian Bawah: Tombol Ambil Gambar */}
-          <View style={styles.footer}>
+          {/* Footer */}
+          <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.footer}>
+            {/* Tombol Gallery */}
             <TouchableOpacity 
-              style={styles.captureButton} 
-              onPress={handleTakePicture}
+              style={styles.galleryButton}
+              onPress={handlePickImage}
               disabled={isScanning}
             >
-              {isScanning ? (
-                <ActivityIndicator color={Colors.light.primary} />
-              ) : (
-                <Ionicons name="camera" size={40} color={Colors.light.primary} />
-              )}
+              <Ionicons name="images-outline" size={28} color="white" />
             </TouchableOpacity>
-          </View>
+
+            <TouchableOpacity 
+              style={styles.captureButtonOuter} 
+              onPress={handleTakePicture}
+              disabled={isScanning}
+              activeOpacity={0.8}
+            >
+              <View style={styles.captureButtonInner}>
+                <View style={styles.captureButtonCore} />
+              </View>
+            </TouchableOpacity>
+            
+            {/* Placeholder Spacer agar Capture button tetap di tengah */}
+            <View style={styles.galleryButtonPlaceholder} />
+          </Animated.View>
+
         </SafeAreaView>
       </CameraView>
     </View>
   );
 };
+
+const frameSize = width * 0.7;
 
 const styles = StyleSheet.create({
   container: {
@@ -131,67 +237,157 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 16,
   },
-  closeButton: {
-    alignSelf: 'flex-start',
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  headerTitle: {
+    color: 'white',
+    fontFamily: 'Poppins-SemiBold',
+    fontSize: 14,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24, // Memberi margin pada teks instruksi
-  },
-  footer: {
-    paddingBottom: 40,
-    alignItems: 'center',
   },
   instructionText: {
     color: 'white',
-    fontSize: 16,
-    fontFamily: 'Poppins-Regular',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    textAlign: 'center', // Membuat teks align center
-    marginBottom: 24,
+    fontSize: 15,
+    fontFamily: 'Poppins-Medium',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 16,
+    textAlign: 'center',
+    marginBottom: 40,
+    overflow: 'hidden',
+  },
+  focusFrameContainer: {
+    width: frameSize,
+    height: frameSize,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   focusFrame: {
     width: '100%',
-    aspectRatio: 1, // Membuat bingkai menjadi persegi
-    borderWidth: 2,
-    borderColor: 'white',
-    borderStyle: 'dashed',
-    borderRadius: 12,
+    height: '100%',
+    position: 'relative',
   },
-  captureButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  corner: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderColor: 'white',
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 16,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 16,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 16,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 16,
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingBottom: 50,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 40,
+  },
+  galleryButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryButtonPlaceholder: {
+    width: 50,
+    height: 50,
+  },
+  captureButtonOuter: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  captureButtonCore: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: 'white',
+    padding: 32,
+    backgroundColor: '#F4F7FB',
   },
   permissionText: {
     fontFamily: 'Poppins-Bold',
-    fontSize: 18,
+    fontSize: 20,
+    color: '#1E293B',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   permissionSubText: {
     fontFamily: 'Poppins-Regular',
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
-    color: Colors.light.textSecondary,
+    color: '#64748B',
+    lineHeight: 24,
   },
 });
 

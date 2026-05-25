@@ -1,123 +1,137 @@
 // ===================================================================
 // File: AuthContext.js
 // Lokasi: Frontend/services/AuthContext.js
-// Deskripsi: Menggunakan React Context untuk mengelola status autentikasi
-//            pengguna di seluruh aplikasi secara terpusat.
+// Deskripsi: Mengelola status autentikasi pengguna di seluruh aplikasi.
+//            Menyimpan token JWT, data user, dan data kumbung aktif.
 // ===================================================================
 
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import apiClient from './api'; // Mengimpor instance Axios yang sudah dikonfigurasi
+import apiClient from './api';
 
-// Membuat Context. Ini akan menjadi "wadah" untuk state dan fungsi autentikasi.
 const AuthContext = createContext();
 
-// Membuat komponen Provider. Komponen ini akan "membungkus" seluruh aplikasi
-// dan menyediakan akses ke state autentikasi.
-const AuthProvider = ({ children }) => {
-  // State untuk menyimpan informasi autentikasi
+export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState({
-    token: null,
+    token:         null,
+    user:          null,   // data user (id_pengguna, nama, email, dll)
     authenticated: false,
-    isLoading: true, // isLoading berguna untuk menampilkan layar loading saat pertama kali cek token
+    isLoading:     true,
   });
 
-  // useEffect ini akan berjalan sekali saat aplikasi pertama kali dimuat
+  // Kumbung yang sedang aktif dipilih pengguna
+  const [kumbungAktif, setKumbungAktif] = useState(null);
+
+  // ── Load token saat aplikasi pertama kali dibuka ────────────────
   useEffect(() => {
-    // Fungsi untuk memeriksa apakah ada token yang tersimpan di ponsel
     const loadToken = async () => {
       try {
-        const token = await SecureStore.getItemAsync('token');
-        
-        if (token) {
-          // Jika token ditemukan, anggap pengguna sudah login
-          setAuthState({
-            token: token,
-            authenticated: true,
-            isLoading: false,
-          });
-          // Mengatur token ini sebagai header default untuk semua permintaan API selanjutnya
+        const token    = await SecureStore.getItemAsync('token');
+        const userJson = await SecureStore.getItemAsync('user');
+        const kId      = await SecureStore.getItemAsync('activeKumbungId');
+
+        if (token && userJson) {
+          const user = JSON.parse(userJson);
           apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          setAuthState({ token, user, authenticated: true, isLoading: false });
+          if (kId) setKumbungAktif(kId);
         } else {
-          // Jika tidak ada token, pengguna belum login
-          setAuthState({ token: null, authenticated: false, isLoading: false });
+          setAuthState({ token: null, user: null, authenticated: false, isLoading: false });
         }
       } catch (e) {
-        // Handle error jika gagal membaca token
-        console.error("Gagal memuat token:", e);
-        setAuthState({ token: null, authenticated: false, isLoading: false });
+        console.error('Gagal memuat token:', e);
+        setAuthState({ token: null, user: null, authenticated: false, isLoading: false });
       }
     };
     loadToken();
   }, []);
 
-  // Fungsi untuk menangani proses pendaftaran
-  const register = async (username, email, password) => {
+  // ── Register ────────────────────────────────────────────────────
+  const register = async (nama, username, email, password) => {
     try {
-      // Memanggil endpoint /auth/register di backend
-      await apiClient.post('/auth/register', { username, email, password });
+      await apiClient.post('/auth/register', { nama, username, email, password });
       return { success: true };
     } catch (e) {
-      // Mengembalikan pesan error dari backend jika ada
-      return { success: false, error: e.response?.data?.detail || 'Gagal mendaftar' };
+      return {
+        success: false,
+        error: e.response?.data?.detail || 'Gagal mendaftar',
+      };
     }
   };
 
-  // Fungsi untuk menangani proses login
+  // ── Login ───────────────────────────────────────────────────────
   const login = async (usernameOrEmail, password) => {
     try {
-      // Backend mengharapkan data login dalam format 'x-www-form-urlencoded'
       const params = new URLSearchParams();
       params.append('username', usernameOrEmail);
       params.append('password', password);
 
-      // Memanggil endpoint /auth/login
       const response = await apiClient.post('/auth/login', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
-      
-      const token = response.data.access_token;
-      
-      // Simpan token dengan aman di penyimpanan ponsel
-      await SecureStore.setItemAsync('token', token);
-      
-      // Atur header default untuk permintaan selanjutnya
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      // Perbarui state untuk menandakan pengguna sudah login
-      setAuthState({ token: token, authenticated: true, isLoading: false });
+
+      const { access_token, user } = response.data;
+
+      // Simpan token & user ke penyimpanan aman
+      await SecureStore.setItemAsync('token', access_token);
+      await SecureStore.setItemAsync('user', JSON.stringify(user));
+
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+
+      setAuthState({ token: access_token, user, authenticated: true, isLoading: false });
       return { success: true };
     } catch (e) {
-      return { success: false, error: e.response?.data?.detail || 'Gagal login' };
+      return {
+        success: false,
+        error: e.response?.data?.detail || 'Username/email atau password salah',
+      };
     }
   };
 
-  // Fungsi untuk menangani proses logout
+  // ── Logout ──────────────────────────────────────────────────────
   const logout = async () => {
     try {
-      // Hapus token dari penyimpanan aman
       await SecureStore.deleteItemAsync('token');
-      
-      // Hapus header otorisasi dari instance Axios
+      await SecureStore.deleteItemAsync('user');
       delete apiClient.defaults.headers.common['Authorization'];
-      
-      // Perbarui state untuk menandakan pengguna sudah logout
-      setAuthState({ token: null, authenticated: false, isLoading: false });
+      setAuthState({ token: null, user: null, authenticated: false, isLoading: false });
+      setKumbungAktif(null);
     } catch (e) {
-      console.error("Gagal saat logout:", e);
+      console.error('Gagal saat logout:', e);
     }
   };
 
-  // Nilai yang akan disediakan oleh Provider ke seluruh aplikasi
+  // ── Update profile ──────────────────────────────────────────────
+  const updateProfile = async (data) => {
+    try {
+      const response = await apiClient.put('/auth/me', data);
+      const updatedUser = response.data;
+      await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+      setAuthState(prev => ({ ...prev, user: updatedUser }));
+      return { success: true };
+    } catch (e) {
+      return {
+        success: false,
+        error: e.response?.data?.detail || 'Gagal update profil',
+      };
+    }
+  };
+
   const value = {
-    ...authState, // (token, authenticated, isLoading)
+    ...authState,
+    kumbungAktif,
+    setKumbungAktif,
     register,
     login,
     logout,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Mengekspor Context dan Provider
-export { AuthContext, AuthProvider };
+// Custom hook agar mudah dipakai di komponen
+export const useAuth = () => useContext(AuthContext);
+
+export { AuthContext };
+export default AuthContext;

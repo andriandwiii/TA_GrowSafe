@@ -71,13 +71,8 @@ def data_sensor_terbaru(
     if not latest:
         raise HTTPException(status_code=404, detail="Belum ada data sensor")
 
-    return SensorLatestResponse(
-        id_kumbung        = latest.id_kumbung,
-        suhu              = latest.suhu,
-        kelembaban        = latest.kelembaban,
-        total_led_menyala = latest.total_led_menyala,
-        waktu_baca        = latest.created_at
-    )
+    # Menggunakan fitur from_attributes (orm_mode) Pydantic
+    return SensorLatestResponse.model_validate(latest)
 
 
 # ── GET /sensor/{id_kumbung}/history ──────────────────────────────

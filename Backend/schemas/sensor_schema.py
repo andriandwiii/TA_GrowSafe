@@ -27,7 +27,7 @@ class SensorLatestResponse(BaseModel):
     suhu:              Optional[float] = None
     kelembaban:        Optional[float] = None
     total_led_menyala: Optional[int]   = None
-    waktu_baca:        datetime
+    created_at:        datetime
 
     class Config:
         from_attributes = True

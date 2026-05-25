@@ -15,8 +15,8 @@ export default {
     tabIconDefault: '#ccc',
     tabIconSelected: tintColorLight,
     // Warna kustom Anda
-    primary: '#2E7D32', // Hijau alami
-    accent: '#E5989B', // Guava Pink
+    primary: '#2E7D32', 
+    accent: '#E5989B', 
     textSecondary: '#616161',
     backgroundSecondary: '#E0E0E0',
     warning: '#FFA000',
@@ -31,7 +31,7 @@ export default {
     tabIconSelected: tintColorDark,
     // Warna kustom Anda untuk mode gelap
     primary: '#2E7D32',
-    accent: '#E5989B',
+    accent: '#e70d14',
     textSecondary: '#E0E0E0',
     backgroundSecondary: '#616161',
     warning: '#FFA000',

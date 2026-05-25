@@ -1,84 +1,121 @@
-// ===================================================================
-// File: _layout.tsx
-// Lokasi: Frontend/app/(tabs)/_layout.tsx
-// Deskripsi: Diperbarui untuk menangani tombol pindai kamera dengan benar.
-// ===================================================================
-
 import React from 'react';
-import { Tabs, useRouter } from 'expo-router'; // 1. Impor useRouter
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../services/AuthContext';
 import Colors from '../../constants/Colors';
-import HeaderProfileButton from '../../components/HeaderProfileButton';
 
 const TabsLayout = () => {
-  const router = useRouter(); // 2. Inisialisasi router
+  const router = useRouter();
+  const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+
+  const userInitial = user?.nama ? user.nama.charAt(0).toUpperCase() : 'U';
+
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 10;
+  const tabHeight = 65 + (insets.bottom > 0 ? insets.bottom - 10 : 0);
 
   return (
     <Tabs
       screenOptions={{
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: Colors.light.primary,
-        },
-        headerTitleStyle: {
-          color: 'white',
-          fontFamily: 'Poppins-Bold',
-        },
-        headerRight: () => <HeaderProfileButton />,
-        tabBarActiveTintColor: Colors.light.primary,
-        tabBarInactiveTintColor: Colors.light.textSecondary,
+        headerShown: false, // Disembunyikan karena kita sudah membuat header custom yang lebih bagus di setiap screen
+        tabBarActiveTintColor: Colors.light.primary ?? '#2E7D32',
+        tabBarInactiveTintColor: '#94A3B8',
         tabBarStyle: {
-          height: 65,
-          paddingBottom: 10,
-          paddingTop: 5,
+          position: 'absolute',
+          backgroundColor: '#FFFFFF',
+          height: tabHeight,
+          paddingBottom: bottomPadding,
+          paddingTop: 8,
           borderTopWidth: 0,
-          elevation: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          shadowColor: '#94A3B8',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+          elevation: 10,
         },
         tabBarLabelStyle: {
-          fontFamily: 'Poppins-Regular',
-          fontSize: 12,
+          fontFamily: 'Poppins-Medium',
+          fontSize: 10,
+          marginTop: 2,
         },
       }}
     >
+      {/* 1. Tab Home */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Riwayat Pindai',
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* 2. Tab Riwayat */}
+      <Tabs.Screen
+        name="riwayat"
+        options={{
+          title: 'Riwayat',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'time' : 'time-outline'} size={24} color={color} />
           ),
         }}
       />
 
-      {/* 3. Perbaikan pada layar Pindai Kamera */}
+      {/* 3. Tombol Kamera Tengah */}
       <Tabs.Screen
-        // Nama ini hanya sebagai placeholder di tab bar, tidak menavigasi ke file
-        name="pindaiPlaceholder" 
+        name="pindaiPlaceholder"
         options={{
-          title: '', // Kosongkan judul
-          tabBarIcon: () => (
-            <View style={styles.scanButtonContainer}>
-              <Ionicons name="camera" size={32} color="white" />
-            </View>
+          title: '',
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={{
+                top: insets.bottom > 0 ? -32 : -24,
+                justifyContent: 'center',
+                alignItems: 'center',
+                flex: 1,
+              }}
+              onPress={() => {
+                router.push('/pindaiKamera' as any);
+              }}
+            >
+              <View style={styles.scanButtonContainer}>
+                <View style={styles.scanButtonInner}>
+                  <Ionicons name="scan-outline" size={28} color="white" />
+                </View>
+              </View>
+            </TouchableOpacity>
           ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            // Mencegah navigasi default
-            e.preventDefault();
-            // Menjalankan navigasi manual ke layar modal
-            router.push('/pindaiKamera'); 
-          },
         }}
       />
 
+      {/* 4. Tab Ensiklopedia */}
       <Tabs.Screen
         name="ensiklopedia"
         options={{
-          title: 'Ensiklopedia',
+          title: 'Edukasi',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'book' : 'book-outline'} size={24} color={color} />
+          ),
+        }}
+      />
+
+      {/* 5. Tab Profile */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profil',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.profileIconContainer, focused && styles.profileIconFocused]}>
+              <Text style={[styles.profileInitial, { color: focused ? Colors.light.primary ?? '#2E7D32' : '#94A3B8' }]}>
+                {userInitial}
+              </Text>
+            </View>
           ),
         }}
       />
@@ -88,22 +125,44 @@ const TabsLayout = () => {
 
 const styles = StyleSheet.create({
   scanButtonContainer: {
-    backgroundColor: Colors.light.primary,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    bottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowColor: Colors.light.primary ?? '#2E7D32',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowRadius: 12,
     elevation: 8,
   },
+  scanButtonInner: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.light.primary ?? '#2E7D32',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileIconContainer: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  profileIconFocused: {
+    borderColor: Colors.light.primary ?? '#2E7D32',
+    backgroundColor: '#E8F5E9',
+  },
+  profileInitial: {
+    fontFamily: 'Poppins-Bold',
+    fontSize: 12,
+  }
 });
 
 export default TabsLayout;
