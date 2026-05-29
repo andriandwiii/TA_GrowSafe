@@ -4,11 +4,16 @@
 # Deskripsi: Logika keamanan: hash password, verifikasi, JWT token.
 # ===================================================================
 
+import os
 from passlib.context        import CryptContext
 from datetime               import datetime, timedelta, timezone
 from jose                   import JWTError, jwt
 from fastapi.security        import OAuth2PasswordBearer
 from fastapi                import HTTPException, status
+from dotenv                 import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ── Konfigurasi Hash Password ──────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -20,8 +25,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 # ── Konfigurasi JWT ────────────────────────────────────────────────
-# Ganti SECRET_KEY dengan string acak yang kuat di environment production
-SECRET_KEY  = "growsafe-secret-key-ganti-ini-di-production"
+# SECRET_KEY dibaca dari .env untuk keamanan
+SECRET_KEY  = os.getenv("SECRET_KEY", "fallback-secret-for-dev-only")
 ALGORITHM   = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30  # token berlaku 30 hari
 

@@ -1,0 +1,49 @@
+LAPORAN TRAINING MODEL REGRESI LINEAR
+GrowSafe — Prediksi Risiko Black Mold
+==================================================
+
+Dataset           : models_ml\csv-file\dataset_growsafe.csv
+Jumlah data       : 500
+Fitur asli        : 5
+Polynomial degree : 2
+Total fitur       : 20
+Train/Test split  : 80% / 20%
+
+METRIK EVALUASI
+--------------------------------------------------
+Training MAE  : 2.8912%
+Training RMSE : 3.8370%
+Training R²   : 0.9718
+
+Testing MAE   : 2.5790%
+Testing RMSE  : 3.4270%
+Testing R²    : 0.9765
+
+CROSS-VALIDATION (5-Fold)
+--------------------------------------------------
+Rata-rata R²  : 0.9668 (±0.0035)
+Rata-rata MAE : 3.1840% (±0.2670)
+Rata-rata RMSE: 4.1393% (±0.4285)
+
+DAFTAR FITUR POLYNOMIAL
+--------------------------------------------------
+   1. suhu
+   2. kelembaban
+   3. total_led_menyala
+   4. infected_area_percent
+   5. fase_encoded
+   6. suhu^2
+   7. suhu kelembaban
+   8. suhu total_led_menyala
+   9. suhu infected_area_percent
+  10. suhu fase_encoded
+  11. kelembaban^2
+  12. kelembaban total_led_menyala
+  13. kelembaban infected_area_percent
+  14. kelembaban fase_encoded
+  15. total_led_menyala^2
+  16. total_led_menyala infected_area_percent
+  17. total_led_menyala fase_encoded
+  18. infected_area_percent^2
+  19. infected_area_percent fase_encoded
+  20. fase_encoded^2

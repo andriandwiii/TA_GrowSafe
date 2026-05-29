@@ -35,28 +35,6 @@ def riwayat_deteksi(
     ).order_by(DeteksiYolo.created_at.desc()).limit(limit).all()
 
 
-# ── GET /history/prediksi/{id_kumbung} ────────────────────────────
-@router.get("/prediksi/{id_kumbung}", response_model=List[PrediksiResponse])
-def riwayat_prediksi(
-    id_kumbung: str,
-    limit: int = 20,
-    db: Session = Depends(get_db),
-    current_user: Pengguna = Depends(get_current_user)
-):
-    """Ambil riwayat prediksi risiko + panen untuk kumbung tertentu."""
-
-    kumbung = db.query(Kumbung).filter(
-        Kumbung.id_kumbung  == id_kumbung,
-        Kumbung.id_pengguna == current_user.id_pengguna
-    ).first()
-    if not kumbung:
-        raise HTTPException(status_code=404, detail="Kumbung tidak ditemukan")
-
-    return db.query(Prediksi).filter(
-        Prediksi.id_kumbung == id_kumbung
-    ).order_by(Prediksi.created_at.desc()).limit(limit).all()
-
-
 # ── GET /history/prediksi/detail/{id_prediksi} ────────────────────
 @router.get("/prediksi/detail/{id_prediksi}", response_model=PrediksiResponse)
 def detail_prediksi(
@@ -103,6 +81,27 @@ def prediksi_terbaru(
         raise HTTPException(status_code=404, detail="Belum ada data prediksi")
 
     return latest
+
+# ── GET /history/prediksi/{id_kumbung} ────────────────────────────
+@router.get("/prediksi/{id_kumbung}", response_model=List[PrediksiResponse])
+def riwayat_prediksi(
+    id_kumbung: str,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: Pengguna = Depends(get_current_user)
+):
+    """Ambil riwayat prediksi risiko + panen untuk kumbung tertentu."""
+
+    kumbung = db.query(Kumbung).filter(
+        Kumbung.id_kumbung  == id_kumbung,
+        Kumbung.id_pengguna == current_user.id_pengguna
+    ).first()
+    if not kumbung:
+        raise HTTPException(status_code=404, detail="Kumbung tidak ditemukan")
+
+    return db.query(Prediksi).filter(
+        Prediksi.id_kumbung == id_kumbung
+    ).order_by(Prediksi.created_at.desc()).limit(limit).all()
 
 
 # ── DELETE /history/deteksi/{id_yolo} ─────────────────────────────

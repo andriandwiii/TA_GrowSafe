@@ -1,13 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 # ── Request: Kirim Data Sensor dari IoT (ESP32) ────────────────────
 class SensorCreate(BaseModel):
     id_kumbung:        str
-    suhu:              Optional[float] = None  # derajat Celsius
-    kelembaban:        Optional[float] = None  # persen (%)
-    total_led_menyala: Optional[int]   = None  # durasi aktor menyala (menit)
+    suhu:              Optional[float] = Field(None, ge=0.0, le=60.0, description="Suhu dalam Celcius (0-60)")
+    kelembaban:        Optional[float] = Field(None, ge=0.0, le=100.0, description="Kelembaban dalam persen (0-100)")
+    total_led_menyala: Optional[int]   = Field(None, ge=0, le=1440, description="Durasi LED menyala dalam menit (0-1440)")
 
 # ── Response: Data Sensor ──────────────────────────────────────────
 class SensorResponse(BaseModel):

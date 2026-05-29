@@ -11,6 +11,7 @@ class NotifikasiResponse(BaseModel):
     isi:           Optional[str] = None
     status_baca:   Literal["Belum", "Sudah"]
     created_at:    datetime
+    kategori:      str
 
     class Config:
         from_attributes = True

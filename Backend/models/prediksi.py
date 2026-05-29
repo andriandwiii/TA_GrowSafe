@@ -27,6 +27,11 @@ class Prediksi(Base):
         default="Rendah"
     )
     rekomendasi_risiko = Column(Text, nullable=True)    # teks rekomendasi penanganan
+    confidence_level   = Column(
+        Enum("Rendah", "Sedang", "Tinggi"),
+        nullable=True,
+        default="Rendah"
+    )   # tingkat kepercayaan prediksi berdasarkan ketersediaan data
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

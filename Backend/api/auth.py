@@ -3,7 +3,7 @@ from fastapi.security     import OAuth2PasswordRequestForm
 from sqlalchemy.orm       import Session
 from database             import SessionLocal
 from models.user          import Pengguna
-from schemas.user_schema  import UserCreate, UserResponse, Token, UserUpdate
+from schemas.user_schema  import UserCreate, UserResponse, Token, UserUpdate, FCMTokenUpdate
 from services             import auth_service
 from services.id_generator import generate_id_pengguna
 
@@ -66,7 +66,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         (Pengguna.email    == form_data.username)
     ).first()
 
-    if not user or not auth_service.verify_password(form_data.password, user.password):
+    if not user or not auth_service.verify_password(form_data.password, str(user.password)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Username/email atau password salah",
@@ -102,7 +102,7 @@ def update_profile(
     """Update profil pengguna (nama, username, email, password)."""
 
     if data.nama:
-        current_user.nama = data.nama
+        current_user.nama = data.nama # type: ignore
 
     if data.username:
         existing = db.query(Pengguna).filter(
@@ -111,7 +111,7 @@ def update_profile(
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Username sudah digunakan")
-        current_user.username = data.username
+        current_user.username = data.username # type: ignore
 
     if data.email:
         existing = db.query(Pengguna).filter(
@@ -120,11 +120,24 @@ def update_profile(
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email sudah terdaftar")
-        current_user.email = data.email
+        current_user.email = data.email # type: ignore
 
     if data.password:
-        current_user.password = auth_service.hash_password(data.password)
+        current_user.password = auth_service.hash_password(data.password) # type: ignore
 
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+# ── PUT /auth/fcm-token ────────────────────────────────────────────
+@router.put("/fcm-token", status_code=status.HTTP_200_OK)
+def update_fcm_token(
+    data: FCMTokenUpdate,
+    db: Session = Depends(get_db),
+    current_user: Pengguna = Depends(get_current_user)
+):
+    """Simpan atau update FCM Token untuk push notification perangkat ini."""
+    current_user.fcm_token = data.fcm_token # type: ignore
+    db.commit()
+    return {"message": "FCM Token berhasil diperbarui"}

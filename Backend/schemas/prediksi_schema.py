@@ -20,6 +20,7 @@ class PrediksiResponse(BaseModel):
     predicted_panen_kg: Optional[float] = None
     kategori_risiko:    Literal["Rendah", "Sedang", "Tinggi"]
     rekomendasi_risiko: Optional[str]   = None
+    confidence_level:   Optional[Literal["Rendah", "Sedang", "Tinggi"]] = None
     created_at:         datetime
 
     class Config:
@@ -31,6 +32,7 @@ class PrediksiSummary(BaseModel):
     risk_persen:        Optional[float] = None
     predicted_panen_kg: Optional[float] = None
     kategori_risiko:    Literal["Rendah", "Sedang", "Tinggi"]
+    confidence_level:   Optional[Literal["Rendah", "Sedang", "Tinggi"]] = None
     created_at:         datetime
 
     class Config:

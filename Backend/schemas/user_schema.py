@@ -21,12 +21,17 @@ class UserUpdate(BaseModel):
     email:    Optional[EmailStr] = None
     password: Optional[str] = None
 
+# ── Request: Update FCM Token ──────────────────────────────────────
+class FCMTokenUpdate(BaseModel):
+    fcm_token: str
+
 # ── Response: Data User (tanpa password) ───────────────────────────
 class UserResponse(BaseModel):
     id_pengguna: str
     nama:        str
     username:    str
     email:       str
+    fcm_token:   Optional[str] = None
     created_at:  datetime
 
     class Config:

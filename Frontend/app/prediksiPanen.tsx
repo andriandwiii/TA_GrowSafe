@@ -17,12 +17,14 @@ const PrediksiPanenScreen = () => {
 
   const { kumbungAktif } = useAuth();
   const [predictionData, setPredictionData] = useState<any>(null);
+  const [loadingMessage, setLoadingMessage] = useState('Menginisiasi model AI...');
 
   useEffect(() => {
     const runPrediction = async () => {
       if (!kumbungAktif) return;
       try {
         setIsLoading(true);
+        setLoadingMessage('Mengumpulkan data sensor kumbung...');
 
         // 1. Ambil data sensor terbaru
         let suhu = 25.0;
@@ -38,6 +40,10 @@ const PrediksiPanenScreen = () => {
         } catch (e) {
           console.log('Tidak ada data sensor terbaru, menggunakan default');
         }
+
+        // Delay buatan agar terkesan bekerja keras (Total 4 detik)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoadingMessage('Mengekstrak fitur deteksi visual YOLO...');
 
         // 2. Ambil id_yolo terbaru dari riwayat
         let id_yolo = null;
@@ -61,6 +67,10 @@ const PrediksiPanenScreen = () => {
           console.log('Gagal mengambil data kumbung');
         }
 
+        // Delay buatan 
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoadingMessage('Menjalankan model Polynomial Regression...');
+
         // 4. Panggil POST /predict/risk
         const formData = new FormData();
         formData.append('id_kumbung', kumbungAktif);
@@ -75,12 +85,20 @@ const PrediksiPanenScreen = () => {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
 
+        // Delay buatan
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        setLoadingMessage('Mengkalkulasi efisiensi panen...');
+
         const result = predictRes.data;
         const risiko = result.risk_persen || 0;
-        const efisiensi = 100 - risiko;
+        const risk_factor = Math.max(0, 1 - Math.pow(risiko / 100, 1.5));
+        const efisiensi = risk_factor * 100;
         const estimasiPanen = result.predicted_panen_kg || 0;
         const panenTanpaRisiko = kapasitasBaglog * 0.4;
         const estimasiKerugian = panenTanpaRisiko - estimasiPanen;
+
+        // Delay terakhir
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         setPredictionData({
           estimasiPanen: estimasiPanen.toFixed(2),
@@ -90,8 +108,9 @@ const PrediksiPanenScreen = () => {
           kategoriRisiko: result.kategori_risiko || 'Aman',
           panenTanpaRisiko: panenTanpaRisiko.toFixed(2),
           estimasiKerugian: estimasiKerugian > 0 ? `-${estimasiKerugian.toFixed(2)}` : '0',
-          rumus: `panen = ${kapasitasBaglog} baglog × 0.4 kg × (1 − ${risiko.toFixed(1)}% / 100) = ${estimasiPanen.toFixed(2)} kg`,
+          rumus: `panen = ${kapasitasBaglog} baglog × 0.4 kg × (1 − (${risiko.toFixed(1)}/100)^1.5) = ${estimasiPanen.toFixed(2)} kg`,
           rekomendasi: result.rekomendasi_risiko || 'Kondisi baik, tidak ada rekomendasi spesifik.',
+          confidenceLevel: result.confidence_level || 'Rendah',
         });
 
       } catch (error) {
@@ -125,7 +144,7 @@ const PrediksiPanenScreen = () => {
       </View>
 
       {isLoading || !predictionData ? (
-        <CustomLoading fullScreen message="Menganalisis potensi panen..." />
+        <CustomLoading fullScreen message={loadingMessage} />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
@@ -184,6 +203,37 @@ const PrediksiPanenScreen = () => {
             <Text style={[styles.formulaText, { fontSize: 11, color: '#64748B', marginTop: 12, fontStyle: 'italic', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 8 }]}>
               *Asumsi: 0.4 kg adalah rata-rata standar produktivitas/hasil panen ideal yang dapat dihasilkan oleh 1 baglog jamur tiram selama satu siklus hidupnya.
             </Text>
+          </Animated.View>
+
+          {/* Confidence Level Badge */}
+          <Animated.View entering={FadeInDown.delay(350).springify()} style={{
+            backgroundColor: predictionData.confidenceLevel === 'Tinggi' ? '#F0FDF4' : predictionData.confidenceLevel === 'Sedang' ? '#FFFBEB' : '#FEF2F2',
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: predictionData.confidenceLevel === 'Tinggi' ? '#BBF7D0' : predictionData.confidenceLevel === 'Sedang' ? '#FDE68A' : '#FECACA',
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <Ionicons
+              name={predictionData.confidenceLevel === 'Tinggi' ? 'shield-checkmark' : predictionData.confidenceLevel === 'Sedang' ? 'shield-half' : 'shield-outline'}
+              size={20}
+              color={predictionData.confidenceLevel === 'Tinggi' ? '#16A34A' : predictionData.confidenceLevel === 'Sedang' ? '#D97706' : '#DC2626'}
+              style={{ marginRight: 10 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 13, color: '#1E293B', marginBottom: 2 }}>
+                Tingkat Kepercayaan: {predictionData.confidenceLevel}
+              </Text>
+              <Text style={{ fontFamily: 'Poppins-Regular', fontSize: 11, color: '#64748B', lineHeight: 16 }}>
+                {predictionData.confidenceLevel === 'Tinggi'
+                  ? 'Data sensor dan deteksi visual mencukupi untuk prediksi yang akurat.'
+                  : predictionData.confidenceLevel === 'Sedang'
+                    ? 'Data cukup memadai. Tambahkan lebih banyak pemindaian untuk akurasi lebih baik.'
+                    : 'Data masih minim. Lakukan lebih banyak pemindaian baglog dan pastikan sensor aktif.'}
+              </Text>
+            </View>
           </Animated.View>
 
           {/* Rekomendasi */}

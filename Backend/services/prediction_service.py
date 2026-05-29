@@ -3,6 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
 import numpy as np
+import pandas as pd
 from PIL import Image
 from services.recommendation_service import tentukan_kategori, get_rekomendasi
 
@@ -10,6 +11,15 @@ from services.recommendation_service import tentukan_kategori, get_rekomendasi
 BASE_DIR       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH     = os.path.join(BASE_DIR, "models_ml", "regression_model.pkl")
 SCALER_PATH    = os.path.join(BASE_DIR, "models_ml", "scaler.pkl")
+POLY_PATH      = os.path.join(BASE_DIR, "models_ml", "poly_features.pkl")
+
+# ── Encoding fase pertumbuhan ─────────────────────────────────────
+# Harus sama dengan yang digunakan saat training di train_model.py
+FASE_ENCODING = {
+    "Inkubasi":  0,
+    "Primordia": 1,
+    "Produksi":  2
+}
 
 # ── Load Model YOLO ───────────────────────────────────────────────
 try:
@@ -21,36 +31,75 @@ except Exception as e:
     yolo_model = None
     print(f"⚠️  Model YOLO tidak tersedia: {e}")
 
-# ── Load Model Regresi Linear + Scaler ───────────────────────────
+# ── Load Model Regresi Linear + Scaler + PolynomialFeatures ──────
 try:
     with open(MODEL_PATH,  "rb") as f: regression_model = pickle.load(f)
     with open(SCALER_PATH, "rb") as f: scaler           = pickle.load(f)
-    print("✅ Model Regresi Linear & Scaler berhasil dimuat.")
+    with open(POLY_PATH,   "rb") as f: poly_transformer  = pickle.load(f)
+    print("✅ Model Regresi Linear (Polynomial) & Scaler berhasil dimuat.")
 except Exception as e:
-    regression_model = None
-    scaler           = None
+    regression_model  = None
+    scaler            = None
+    poly_transformer  = None
     print(f"⚠️  Model Regresi Linear tidak tersedia: {e}")
 
 
 # ── Deteksi YOLO ──────────────────────────────────────────────────
 def run_yolo_detection(image: Image.Image) -> dict:
-    """Jalankan YOLO pada foto baglog. Return confidence & infected area."""
+    """
+    Jalankan YOLO pada foto baglog.
+    Menghitung TOTAL area terinfeksi dari SEMUA bounding box yang terdeteksi,
+    bukan hanya 1 box dengan confidence tertinggi.
+    """
     if yolo_model is None:
-        return {"confidence_score": 0.0, "infected_area_percent": 0.0}
+        return {"confidence_score": 0.0, "infected_area_percent": 0.0, "plotted_image": None}
     try:
-        results = yolo_model(image)
+        results = yolo_model(image, conf=0.25)
         if not results or len(results[0].boxes) == 0:
-            return {"confidence_score": 0.0, "infected_area_percent": 0.0}
-        boxes    = results[0].boxes
-        best     = max(boxes, key=lambda b: float(b.conf))
-        conf     = float(best.conf)
-        w, h     = image.size
-        x1,y1,x2,y2 = best.xyxy[0].tolist()
-        infected = round(((x2-x1)*(y2-y1)) / (w*h) * 100, 2) if w*h > 0 else 0.0
-        return {"confidence_score": round(conf, 4), "infected_area_percent": infected}
+            return {"confidence_score": 0.0, "infected_area_percent": 0.0, "plotted_image": None}
+
+        boxes = results[0].boxes
+        w, h  = image.size
+        total_image_area = w * h
+
+        # ── Hitung total area terinfeksi tanpa overlap (Union Area) ──
+        max_conf = 0.0
+        # Buat canvas/mask kosong berukuran gambar (2D array)
+        # Menggunakan np.uint8 sangat ringan memori
+        mask = np.zeros((int(h), int(w)), dtype=np.uint8)
+
+        for box in boxes:
+            conf = float(box.conf)
+            max_conf = max(max_conf, conf)
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            
+            # Konversi koordinat ke integer (batas piksel)
+            x1_idx = max(0, int(x1))
+            y1_idx = max(0, int(y1))
+            x2_idx = min(int(w), int(x2))
+            y2_idx = min(int(h), int(y2))
+            
+            # Tandai piksel yang berada dalam kotak sebagai 1 (terinfeksi)
+            mask[y1_idx:y2_idx, x1_idx:x2_idx] = 1
+
+        # Jumlahkan seluruh piksel yang bernilai 1 (area gabungan murni)
+        total_infected_area = np.sum(mask)
+
+        # Hitung persentase murni tanpa nilai lebih dari 100%
+        infected = round((total_infected_area / total_image_area) * 100, 2) if total_image_area > 0 else 0.0
+
+        # ── Dapatkan gambar dengan Bounding Box ──
+        res_plotted = results[0].plot() # numpy array (BGR format)
+        plotted_img = Image.fromarray(res_plotted[..., ::-1]) # Convert BGR ke RGB PIL Image
+
+        return {
+            "confidence_score": round(max_conf, 4),
+            "infected_area_percent": infected,
+            "plotted_image": plotted_img
+        }
     except Exception as e:
         print(f"⚠️  Error YOLO: {e}")
-        return {"confidence_score": 0.0, "infected_area_percent": 0.0}
+        return {"confidence_score": 0.0, "infected_area_percent": 0.0, "plotted_image": None}
 
 
 # ── Prediksi Risiko Black Mold ────────────────────────────────────
@@ -58,28 +107,34 @@ def predict_risk(
     suhu: float,
     kelembaban: float,
     total_led_menyala: int,
-    infected_area_percent: float = 0.0
+    infected_area_percent: float = 0.0,
+    fase: str = "Produksi"
 ) -> dict:
     """
-    Prediksi risiko black mold menggunakan model Regresi Linear.
+    Prediksi risiko black mold menggunakan model Regresi Linear
+    dengan Polynomial Features (degree=2).
 
     Input:
       - suhu                 : suhu kumbung (°C)
       - kelembaban           : kelembaban kumbung (%)
       - total_led_menyala    : durasi aktor menyala (menit)
       - infected_area_percent: % area terinfeksi dari YOLO (0-100)
+      - fase                 : fase pertumbuhan (Inkubasi/Primordia/Produksi)
 
     Output:
       - risk_persen        : 0.0 - 100.0
       - kategori_risiko    : Rendah / Sedang / Tinggi
       - rekomendasi_risiko : teks rekomendasi penanganan
     """
-    if regression_model is not None and scaler is not None:
-        # ── Pakai model yang sudah dilatih ────
-        features    = pd.DataFrame([[suhu, kelembaban, total_led_menyala, infected_area_percent]],
-                                    columns=["suhu","kelembaban","total_led_menyala","infected_area_percent"])
-        scaled      = scaler.transform(features)
-        risk_persen = float(regression_model.predict(scaled)[0])
+    if regression_model is not None and scaler is not None and poly_transformer is not None:
+        # ── Pakai model Polynomial Regression ────
+        fase_encoded = FASE_ENCODING.get(fase, 2)  # Default: Produksi
+        features = np.array([[suhu, kelembaban, total_led_menyala, infected_area_percent, fase_encoded]])
+
+        # Langkah: fitur asli → polynomial features → scaling → prediksi
+        features_poly  = poly_transformer.transform(features)
+        features_scaled = scaler.transform(features_poly)
+        risk_persen = float(regression_model.predict(features_scaled)[0])
         risk_persen = float(np.clip(risk_persen, 0.0, 100.0))
     else:
         # ── Fallback formula manual ───────────
@@ -111,16 +166,16 @@ def predict_risk(
 # ── Prediksi Potensi Panen ────────────────────────────────────────
 def predict_panen(kapasitas_baglog: int, risk_persen: float) -> float:
     """
-    Prediksi potensi total panen (kg).
-    Formula: baglog × 0.4kg × (1 - risk%)
-    Rata-rata 1 baglog jamur tiram menghasilkan 0.4 kg per siklus.
+    Prediksi potensi panen dengan dampak risiko non-linear.
+    Risk rendah: dampak minimal. Risk tinggi: dampak eksponensial.
     """
-    hasil = kapasitas_baglog * 0.4 * (1 - risk_persen / 100.0)
+    produktivitas = 0.4  # kg per baglog per siklus
+    
+    # Non-linear: (1 - (risk/100)^1.5)
+    # Risk 10% → faktor 0.968 (hampir tidak berpengaruh)
+    # Risk 50% → faktor 0.646 (berdampak sedang)
+    # Risk 90% → faktor 0.146 (sangat berdampak)
+    risk_factor = max(0.0, 1.0 - (risk_persen / 100.0) ** 1.5)
+    
+    hasil = kapasitas_baglog * produktivitas * risk_factor
     return round(max(0.0, hasil), 2)
-
-
-# import pandas di sini agar tidak error saat fallback
-try:
-    import pandas as pd
-except ImportError:
-    pass

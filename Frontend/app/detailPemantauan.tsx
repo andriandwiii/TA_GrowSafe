@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  StatusBar, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  StatusBar,
+  TouchableOpacity,
   ScrollView,
   ActivityIndicator
 } from 'react-native';
@@ -43,7 +43,8 @@ const DetailPemantauanScreen = () => {
       saatIni: 0,
       status: 'Memuat...'
     },
-    grafikMocks: [] as {jam: string, suhu: number, kelembaban: number}[]
+    grafikMocks: [] as { jam: string, suhu: number, kelembaban: number }[],
+    insight: 'Menganalisis kondisi kumbung...'
   });
 
   const fetchData = async () => {
@@ -52,7 +53,7 @@ const DetailPemantauanScreen = () => {
       if (!kumbungAktif) return;
       const response = await apiClient.get(`/sensor/${kumbungAktif}/latest`);
       const { suhu, kelembaban, total_led_menyala } = response.data;
-      
+
       let statusSuhu = 'Normal';
       if (suhu > 30) statusSuhu = 'Bahaya';
       else if (suhu > 28) statusSuhu = 'Peringatan';
@@ -73,7 +74,7 @@ const DetailPemantauanScreen = () => {
       // Hitung min/max/avg dari history jika ada
       let avgSuhu = 0, maxSuhu = suhu || 0, minSuhu = suhu || 0;
       let avgKel = 0, maxKel = kelembaban || 0, minKel = kelembaban || 0;
-      let chartData: {jam: string, suhu: number, kelembaban: number}[] = [];
+      let chartData: { jam: string, suhu: number, kelembaban: number }[] = [];
 
       if (historyData.length > 0) {
         const suhus = historyData.map((d: any) => d.suhu);
@@ -93,21 +94,38 @@ const DetailPemantauanScreen = () => {
           const date = new Date(item.created_at);
           const hours = date.getHours().toString().padStart(2, '0');
           const minutes = date.getMinutes().toString().padStart(2, '0');
-          
+
           return {
             jam: `${hours}:${minutes}`,
             // Konversi ke persentase tinggi bar (misal suhu max 50C, kelembaban max 100%)
-            suhu: Math.min(Math.max((item.suhu / 50) * 100, 10), 100), 
+            suhu: Math.min(Math.max((item.suhu / 50) * 100, 10), 100),
             kelembaban: Math.min(Math.max((item.kelembaban / 100) * 100, 10), 100)
           };
         });
+      }
+
+      // 3. Tentukan analisis / insight secara dinamis
+      let generatedInsight = "";
+      if (suhu > 30 && kelembaban > 90) {
+        generatedInsight = `Kondisi saat ini sangat KRITIS. Suhu (${suhu}°C) dan kelembaban (${kelembaban}%) terlalu tinggi. Risiko infeksi Black Mold meningkat tajam. Segera nyalakan exhaust atau perbaiki sirkulasi udara.`;
+      } else if (suhu > 30) {
+        generatedInsight = `Suhu ruangan terpantau tinggi (${suhu}°C). Pastikan sirkulasi udara berjalan dengan baik agar media tanam jamur tidak cepat kering.`;
+      } else if (kelembaban > 90) {
+        generatedInsight = `Tingkat kelembaban sangat tinggi (${kelembaban}%). Kurangi frekuensi penyiraman untuk menghindari embun berlebih dan risiko serangan penyakit.`;
+      } else if (suhu < 22) {
+        generatedInsight = `Suhu cukup rendah (${suhu}°C). Pertumbuhan miselium mungkin akan sedikit melambat, namun kondisi ini aman dari risiko penyakit.`;
+      } else if (suhu >= 22 && suhu <= 28 && kelembaban >= 80 && kelembaban <= 90) {
+        generatedInsight = `Kondisi kumbung saat ini sangat IDEAL. Suhu dan kelembaban berada pada rentang optimal untuk pertumbuhan jamur tiram yang maksimal.`;
+      } else {
+        generatedInsight = `Kondisi lingkungan kumbung Anda relatif stabil. Terus pantau perubahan suhu dan kelembaban, terutama saat pergantian cuaca ekstrem.`;
       }
 
       setData({
         suhu: { saatIni: suhu || 0, status: statusSuhu, rataRata: avgSuhu, maksimum: maxSuhu, minimum: minSuhu },
         kelembaban: { saatIni: kelembaban || 0, status: statusKelembaban, rataRata: avgKel, maksimum: maxKel, minimum: minKel },
         led: { saatIni: total_led_menyala || 0, status: total_led_menyala > 0 ? 'Menyala' : 'Mati' },
-        grafikMocks: chartData
+        grafikMocks: chartData,
+        insight: generatedInsight
       });
     } catch (error) {
       console.log('Gagal fetch data:', error);
@@ -133,8 +151,8 @@ const DetailPemantauanScreen = () => {
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" /><View style={styles.bgDecorTop} /><View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
+        <TouchableOpacity
+          onPress={() => router.back()}
           style={styles.backButton}
           activeOpacity={0.7}
         >
@@ -145,77 +163,77 @@ const DetailPemantauanScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}><Animated.View entering={FadeInDown.delay(100).springify()} style={styles.summaryContainer}><View style={styles.summaryCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBg, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="thermometer" size={20} color="#EF4444" />
-              </View>
-              <View style={[styles.badge, { backgroundColor: '#F0FDF4' }]}>
-                <Text style={[styles.badgeText, { color: '#166534' }]}>{data.suhu.status}</Text>
-              </View>
+        <View style={styles.cardHeaderRow}>
+          <View style={[styles.iconBg, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="thermometer" size={20} color="#EF4444" />
+          </View>
+          <View style={[styles.badge, { backgroundColor: '#F0FDF4' }]}>
+            <Text style={[styles.badgeText, { color: '#166534' }]}>{data.suhu.status}</Text>
+          </View>
+        </View>
+        <Text style={styles.mainValue}>{data.suhu.saatIni}<Text style={styles.unitText}>°C</Text></Text>
+        <Text style={styles.labelValue}>Suhu Ruangan</Text>
+
+        <View style={styles.divider} />
+
+        <View style={styles.statsRow}>
+          <View>
+            <Text style={styles.statsLabel}>Rata-rata</Text>
+            <Text style={styles.statsValue}>{data.suhu.rataRata}°</Text>
+          </View>
+          <View style={styles.verticalDivider} />
+          <View>
+            <Text style={styles.statsLabel}>Tertinggi</Text>
+            <Text style={[styles.statsValue, { color: '#EF4444' }]}>{data.suhu.maksimum}°</Text>
+          </View>
+        </View>
+      </View><View style={styles.summaryCard}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.iconBg, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="water" size={20} color="#0284C7" />
             </View>
-            <Text style={styles.mainValue}>{data.suhu.saatIni}<Text style={styles.unitText}>°C</Text></Text>
-            <Text style={styles.labelValue}>Suhu Ruangan</Text>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.statsRow}>
-              <View>
-                <Text style={styles.statsLabel}>Rata-rata</Text>
-                <Text style={styles.statsValue}>{data.suhu.rataRata}°</Text>
-              </View>
-              <View style={styles.verticalDivider} />
-              <View>
-                <Text style={styles.statsLabel}>Tertinggi</Text>
-                <Text style={[styles.statsValue, { color: '#EF4444' }]}>{data.suhu.maksimum}°</Text>
-              </View>
-            </View>
-          </View><View style={styles.summaryCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBg, { backgroundColor: '#E0F2FE' }]}>
-                <Ionicons name="water" size={20} color="#0284C7" />
-              </View>
-              <View style={[styles.badge, { backgroundColor: '#F0FDF4' }]}>
-                <Text style={[styles.badgeText, { color: '#166534' }]}>{data.kelembaban.status}</Text>
-              </View>
-            </View>
-            <Text style={styles.mainValue}>{data.kelembaban.saatIni}<Text style={styles.unitText}>%</Text></Text>
-            <Text style={styles.labelValue}>Kelembaban</Text>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.statsRow}>
-              <View>
-                <Text style={styles.statsLabel}>Rata-rata</Text>
-                <Text style={styles.statsValue}>{data.kelembaban.rataRata}%</Text>
-              </View>
-              <View style={styles.verticalDivider} />
-              <View>
-                <Text style={styles.statsLabel}>Terendah</Text>
-                <Text style={[styles.statsValue, { color: '#D97706' }]}>{data.kelembaban.minimum}%</Text>
-              </View>
-            </View>
-          </View><View style={styles.summaryCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBg, { backgroundColor: '#FFF8E1' }]}>
-                <Ionicons name="bulb" size={20} color="#FFB300" />
-              </View>
-              <View style={[styles.badge, { backgroundColor: data.led.status === 'Menyala' ? '#FEF3C7' : '#F1F5F9' }]}>
-                <Text style={[styles.badgeText, { color: data.led.status === 'Menyala' ? '#B45309' : '#64748B' }]}>{data.led.status}</Text>
-              </View>
-            </View>
-            <Text style={styles.mainValue}>{data.led.saatIni}</Text>
-            <Text style={styles.labelValue}>Total LED Menyala</Text>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.statsRow}>
-              <View>
-                <Text style={styles.statsLabel}>Mode</Text>
-                <Text style={[styles.statsValue, {fontSize: 16}]}>Otomatis</Text>
-              </View>
+            <View style={[styles.badge, { backgroundColor: '#F0FDF4' }]}>
+              <Text style={[styles.badgeText, { color: '#166534' }]}>{data.kelembaban.status}</Text>
             </View>
           </View>
-        </Animated.View><Animated.View entering={FadeInDown.delay(200).springify()} style={styles.chartCard}>
+          <Text style={styles.mainValue}>{data.kelembaban.saatIni}<Text style={styles.unitText}>%</Text></Text>
+          <Text style={styles.labelValue}>Kelembaban</Text>
+
+          <View style={styles.divider} />
+
+          <View style={styles.statsRow}>
+            <View>
+              <Text style={styles.statsLabel}>Rata-rata</Text>
+              <Text style={styles.statsValue}>{data.kelembaban.rataRata}%</Text>
+            </View>
+            <View style={styles.verticalDivider} />
+            <View>
+              <Text style={styles.statsLabel}>Terendah</Text>
+              <Text style={[styles.statsValue, { color: '#D97706' }]}>{data.kelembaban.minimum}%</Text>
+            </View>
+          </View>
+        </View><View style={styles.summaryCard}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.iconBg, { backgroundColor: '#FFF8E1' }]}>
+              <Ionicons name="bulb" size={20} color="#FFB300" />
+            </View>
+            <View style={[styles.badge, { backgroundColor: data.led.status === 'Menyala' ? '#FEF3C7' : '#F1F5F9' }]}>
+              <Text style={[styles.badgeText, { color: data.led.status === 'Menyala' ? '#B45309' : '#64748B' }]}>{data.led.status}</Text>
+            </View>
+          </View>
+          <Text style={styles.mainValue}>{data.led.saatIni}</Text>
+          <Text style={styles.labelValue}>Total LED Menyala</Text>
+
+          <View style={styles.divider} />
+
+          <View style={styles.statsRow}>
+            <View>
+              <Text style={styles.statsLabel}>Mode</Text>
+              <Text style={[styles.statsValue, { fontSize: 16 }]}>Otomatis</Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View><Animated.View entering={FadeInDown.delay(200).springify()} style={styles.chartCard}>
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Grafik Hari Ini</Text>
             <View style={styles.legendRow}>
@@ -245,10 +263,10 @@ const DetailPemantauanScreen = () => {
         </Animated.View><Animated.View entering={FadeInDown.delay(300).springify()} style={styles.insightCard}>
           <View style={styles.insightHeader}>
             <Ionicons name="bulb" size={24} color="#F59E0B" />
-            <Text style={styles.insightTitle}>Analisis AI</Text>
+            <Text style={styles.insightTitle}>Analisis Kondisi</Text>
           </View>
           <Text style={styles.insightText}>
-            Suhu mengalami lonjakan pada pukul 12:00 namun sistem berhasil menurunkannya kembali. Tingkat kelembaban sangat stabil sejak pagi. Kondisi kumbung saat ini sangat ideal untuk pertumbuhan jamur.
+            {data.insight}
           </Text>
         </Animated.View>
 
@@ -273,16 +291,16 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 40,
     opacity: 0.5,
   },
-  centerContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: '#F4F7FB' 
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F4F7FB'
   },
-  loadingText: { 
-    fontFamily: 'Poppins-Medium', 
-    marginTop: 16, 
-    color: '#64748B' 
+  loadingText: {
+    fontFamily: 'Poppins-Medium',
+    marginTop: 16,
+    color: '#64748B'
   },
   header: {
     flexDirection: 'row',

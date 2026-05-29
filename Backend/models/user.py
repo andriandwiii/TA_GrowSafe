@@ -16,6 +16,7 @@ class Pengguna(Base):
     username = Column(String(50),  nullable=False, unique=True)
     email    = Column(String(100), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
+    fcm_token= Column(String(255), nullable=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

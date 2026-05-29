@@ -13,10 +13,10 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState({
-    token:         null,
-    user:          null,   // data user (id_pengguna, nama, email, dll)
+    token: null,
+    user: null,   // data user (id_pengguna, nama, email, dll)
     authenticated: false,
-    isLoading:     true,
+    isLoading: true,
   });
 
   // Kumbung yang sedang aktif dipilih pengguna
@@ -26,9 +26,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const loadToken = async () => {
       try {
-        const token    = await SecureStore.getItemAsync('token');
+        const token = await SecureStore.getItemAsync('token');
         const userJson = await SecureStore.getItemAsync('user');
-        const kId      = await SecureStore.getItemAsync('activeKumbungId');
+        const kId = await SecureStore.getItemAsync('activeKumbungId');
 
         if (token && userJson) {
           const user = JSON.parse(userJson);

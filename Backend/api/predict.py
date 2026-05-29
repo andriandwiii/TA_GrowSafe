@@ -7,24 +7,27 @@ import io
 import os
 import sys
 import uuid
+from datetime import datetime, timedelta
 
 # Fix path agar import dari root Backend selalu bisa ditemukan
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi                          import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm                   import Session
+from sqlalchemy                       import func as sql_func
 from PIL                              import Image
 from database                         import SessionLocal
 from models.deteksi_yolo              import DeteksiYolo
 from models.prediksi                  import Prediksi
 from models.kumbung                   import Kumbung
+from models.sensor_data               import SensorData
 from models.notifikasi                import Notifikasi
 from schemas.prediksi_schema          import PrediksiResponse
 from schemas.deteksi_schema           import DeteksiResponse
 from services.prediction_service      import run_yolo_detection, predict_risk, predict_panen
 from services.id_generator            import generate_id_yolo, generate_id_prediksi, generate_id_notifikasi
 from services.recommendation_service  import tentukan_kategori, get_rekomendasi
-from services.fcm_service             import buat_konten_notifikasi
+from services.fcm_service             import buat_konten_notifikasi, send_notification
 from api.auth                         import get_current_user, get_db
 from models.user                      import Pengguna
 
@@ -59,8 +62,14 @@ async def deteksi_gambar(
 
     file_name = f"{uuid.uuid4()}.jpg"
     file_path = os.path.join(UPLOAD_DIR, file_name)
-    with open(file_path, "wb") as f:
-        f.write(contents)
+    
+    # Jika YOLO menemukan penyakit, simpan gambar yang sudah ada kotak (bounding box)-nya
+    if hasil_yolo.get("plotted_image"):
+        hasil_yolo["plotted_image"].save(file_path, format="JPEG")
+    else:
+        # Jika tidak, simpan foto asli
+        with open(file_path, "wb") as f:
+            f.write(contents)
 
     deteksi = DeteksiYolo(
         id_yolo               = generate_id_yolo(db),
@@ -73,6 +82,96 @@ async def deteksi_gambar(
     db.commit()
     db.refresh(deteksi)
     return deteksi
+
+
+# ── HELPER: Hitung Weighted Infected Area ─────────────────────────
+def _hitung_weighted_infected_area(db: Session, id_kumbung: str) -> tuple[float, int]:
+    """
+    Menghitung rata-rata tertimbang (weighted average) dari infected_area_percent
+    berdasarkan deteksi dalam 7 hari terakhir.
+    
+    Data terbaru mendapat bobot lebih tinggi (recency weighting).
+    
+    Returns:
+        tuple: (weighted_infected_area, jumlah_deteksi)
+    """
+    cutoff = datetime.now() - timedelta(days=7)
+    recent_detections = db.query(DeteksiYolo).filter(
+        DeteksiYolo.id_kumbung  == id_kumbung,
+        DeteksiYolo.created_at  >= cutoff
+    ).order_by(DeteksiYolo.created_at.desc()).all()
+
+    if not recent_detections:
+        return 0.0, 0
+
+    # Weighted average: deteksi terbaru mendapat bobot lebih besar
+    # Terbaru (i=0) → bobot 1.0, kedua (i=1) → 0.5, ketiga (i=2) → 0.33, dst.
+    total_weight = 0.0
+    weighted_sum = 0.0
+    for i, d in enumerate(recent_detections):
+        weight = 1.0 / (i + 1)
+        area_val: float = float(d.infected_area_percent or 0.0)  # type: ignore[arg-type]
+        weighted_sum += area_val * weight
+        total_weight += weight
+
+    infected_area = round(weighted_sum / total_weight, 2) if total_weight > 0 else 0.0
+    return infected_area, len(recent_detections)
+
+
+# ── HELPER: Hitung Confidence Level Prediksi ──────────────────────
+def _hitung_confidence_level(db: Session, id_kumbung: str, jumlah_deteksi: int) -> str:
+    """
+    Menentukan tingkat kepercayaan prediksi berdasarkan ketersediaan data.
+    
+    Semakin banyak data sensor dan deteksi visual yang tersedia,
+    semakin tinggi tingkat kepercayaan prediksi.
+    
+    Kriteria:
+    - Tinggi  : ≥ 50 data sensor DAN ≥ 10 deteksi visual dalam 7 hari
+    - Sedang  : ≥ 20 data sensor DAN ≥ 3 deteksi visual dalam 7 hari
+    - Rendah  : di bawah kriteria Sedang
+    """
+    cutoff = datetime.now() - timedelta(days=7)
+
+    jumlah_sensor = db.query(sql_func.count(SensorData.id)).filter(
+        SensorData.id_kumbung  == id_kumbung,
+        SensorData.created_at  >= cutoff
+    ).scalar() or 0
+
+    if jumlah_sensor >= 50 and jumlah_deteksi >= 10:
+        return "Tinggi"
+    elif jumlah_sensor >= 20 and jumlah_deteksi >= 3:
+        return "Sedang"
+    else:
+        return "Rendah"
+
+
+# ── HELPER: Tentukan Fase Pertumbuhan Otomatis ────────────────────
+def _tentukan_fase(kumbung) -> str:
+    """
+    Tentukan fase pertumbuhan jamur berdasarkan waktu mulai budidaya.
+
+    Fase pertumbuhan jamur tiram:
+      - Inkubasi  :  0 - 14 hari  (miselium menyebar di baglog)
+      - Primordia : 15 - 21 hari  (bakal jamur mulai tumbuh)
+      - Produksi  : 22+ hari      (jamur tumbuh dan siap panen)
+
+    Jika waktu_mulai_budidaya tidak diset, default ke "Produksi".
+    """
+    if not kumbung.waktu_mulai_budidaya:
+        return "Produksi"
+
+    from datetime import date
+    hari_budidaya = (date.today() - kumbung.waktu_mulai_budidaya).days
+
+    if hari_budidaya < 0:
+        return "Inkubasi"  # Belum mulai
+    elif hari_budidaya <= 14:
+        return "Inkubasi"
+    elif hari_budidaya <= 21:
+        return "Primordia"
+    else:
+        return "Produksi"
 
 
 # ── POST /predict/risk ─────────────────────────────────────────────
@@ -95,26 +194,26 @@ def prediksi_risiko(
     if not kumbung:
         raise HTTPException(status_code=404, detail="Kumbung tidak ditemukan")
 
-    # ── MENGHITUNG AVERAGE INFECTED AREA (Lebih Efektif) ──
-    infected_area = 0.0
-    
-    # Ambil 5 riwayat deteksi terakhir dari kumbung ini (sampling populasi)
-    recent_detections = db.query(DeteksiYolo).filter(
-        DeteksiYolo.id_kumbung == id_kumbung
-    ).order_by(DeteksiYolo.created_at.desc()).limit(5).all()
+    # ── TENTUKAN FASE PERTUMBUHAN ─────────────────────────────────
+    # Dihitung otomatis berdasarkan waktu_mulai_budidaya di data kumbung.
+    fase = _tentukan_fase(kumbung)
 
-    if recent_detections:
-        total_infected = sum((d.infected_area_percent or 0.0) for d in recent_detections) # type: ignore
-        infected_area = float(total_infected / len(recent_detections)) # type: ignore
-    
-    # (Opsional) Jika user mengirim id_yolo spesifik, kita bisa memberikan bobot lebih 
-    # atau cukup gunakan nilai average dari populasi di atas. Kita gunakan average agar lebih robust.
+    # ── WEIGHTED AVERAGE INFECTED AREA (7 hari terakhir) ──────────
+    # Menggunakan recency weighting: deteksi terbaru berbobot lebih tinggi.
+    # Ini lebih representatif dibandingkan simple average dari 5 deteksi terakhir.
+    infected_area, jumlah_deteksi = _hitung_weighted_infected_area(db, id_kumbung)
+
+    # ── HITUNG CONFIDENCE LEVEL ───────────────────────────────────
+    # Mengukur seberapa percaya diri prediksi berdasarkan ketersediaan data
+    # sensor IoT (holistic monitoring) dan deteksi visual (spot-check).
+    confidence_level = _hitung_confidence_level(db, id_kumbung, jumlah_deteksi)
 
     hasil = predict_risk(
         suhu                  = suhu,
         kelembaban            = kelembaban,
         total_led_menyala     = total_led_menyala,
-        infected_area_percent = infected_area
+        infected_area_percent = infected_area,
+        fase                  = fase
     )
 
     panen_kg = predict_panen(
@@ -128,7 +227,8 @@ def prediksi_risiko(
         risk_persen        = hasil["risk_persen"],
         predicted_panen_kg = panen_kg,
         kategori_risiko    = hasil["kategori_risiko"],
-        rekomendasi_risiko = hasil["rekomendasi_risiko"]
+        rekomendasi_risiko = hasil["rekomendasi_risiko"],
+        confidence_level   = confidence_level
     )
     db.add(prediksi)
     db.commit()
@@ -150,5 +250,14 @@ def prediksi_risiko(
         )
         db.add(notif)
         db.commit()
+
+        # Kirim push notification ke perangkat mobile
+        if current_user.fcm_token:
+            send_notification(
+                fcm_token=str(current_user.fcm_token),
+                judul=konten["judul"],
+                isi=konten["isi"],
+                data={"id_prediksi": prediksi.id_prediksi, "kategori": hasil["kategori_risiko"]}
+            )
 
     return prediksi

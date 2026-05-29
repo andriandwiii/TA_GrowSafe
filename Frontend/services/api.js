@@ -7,7 +7,7 @@ import Constants from 'expo-constants';
 import axios from 'axios';
 
 // Fallback IP jika aplikasi di-*build* (APK) atau gagal mendeteksi IP otomatis
-let API_BASE_URL = 'http://192.168.0.111:8000';
+let API_BASE_URL = 'http://10.111.10.218:8000';
 
 if (__DEV__) {
   // Mendapatkan IP laptop yang menjalankan server Metro Expo secara otomatis
@@ -25,7 +25,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // timeout 10 detik
+  timeout: 30000, // timeout 30 detik (agar YOLO tidak error time-out)
 });
 
 export default apiClient;

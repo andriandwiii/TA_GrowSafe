@@ -42,6 +42,13 @@ class Notifikasi(Base):
         onupdate=func.now()
     )
 
+    # Dynamic property for frontend (no DB migration needed)
+    @property
+    def kategori(self) -> str:
+        if self.judul and "BAHAYA" in self.judul:
+            return "Tinggi"
+        return "Sedang"
+
     # Index tambahan
     __table_args__ = (
         Index("ix_notifikasi_id_notifikasi_id_pengguna", "id_notifikasi", "id_pengguna"),

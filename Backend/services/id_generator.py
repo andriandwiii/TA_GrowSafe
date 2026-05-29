@@ -17,54 +17,54 @@ from models.notifikasi  import Notifikasi
 
 
 def generate_id_pengguna(db: Session) -> str:
-    """Format: USR001, USR002, ..."""
-    last_item = db.query(Pengguna).order_by(Pengguna.id_pengguna.desc()).first()
+    """Format: USR000001, USR000002, ..."""
+    last_item = db.query(Pengguna).order_by(Pengguna.id.desc()).first()
     if not last_item:
-        return "USR001"
+        return "USR000001"
     last_num = int(last_item.id_pengguna.replace("USR", ""))
-    return f"USR{str(last_num + 1).zfill(3)}"
+    return f"USR{str(last_num + 1).zfill(6)}"
 
 
 def generate_id_kumbung(db: Session) -> str:
-    """Format: KMB001, KMB002, ..."""
-    last_item = db.query(Kumbung).order_by(Kumbung.id_kumbung.desc()).first()
+    """Format: KMB000001, KMB000002, ..."""
+    last_item = db.query(Kumbung).order_by(Kumbung.id.desc()).first()
     if not last_item:
-        return "KMB001"
+        return "KMB000001"
     last_num = int(last_item.id_kumbung.replace("KMB", ""))
-    return f"KMB{str(last_num + 1).zfill(3)}"
+    return f"KMB{str(last_num + 1).zfill(6)}"
 
 
 def generate_id_sensor(db: Session) -> str:
-    """Format: SNS001, SNS002, ..."""
-    last_item = db.query(SensorData).order_by(SensorData.id_sensor.desc()).first()
+    """Format: SNS000001, SNS000002, ..."""
+    last_item = db.query(SensorData).order_by(SensorData.id.desc()).first()
     if not last_item:
-        return "SNS001"
+        return "SNS000001"
     last_num = int(last_item.id_sensor.replace("SNS", ""))
-    return f"SNS{str(last_num + 1).zfill(3)}"
+    return f"SNS{str(last_num + 1).zfill(6)}"
 
 
 def generate_id_yolo(db: Session) -> str:
-    """Format: YLO001, YLO002, ..."""
-    last_item = db.query(DeteksiYolo).order_by(DeteksiYolo.id_yolo.desc()).first()
+    """Format: YLO000001, YLO000002, ..."""
+    last_item = db.query(DeteksiYolo).order_by(DeteksiYolo.id.desc()).first()
     if not last_item:
-        return "YLO001"
+        return "YLO000001"
     last_num = int(last_item.id_yolo.replace("YLO", ""))
-    return f"YLO{str(last_num + 1).zfill(3)}"
+    return f"YLO{str(last_num + 1).zfill(6)}"
 
 
 def generate_id_prediksi(db: Session) -> str:
-    """Format: PRD001, PRD002, ..."""
-    last_item = db.query(Prediksi).order_by(Prediksi.id_prediksi.desc()).first()
+    """Format: PRD000001, PRD000002, ..."""
+    last_item = db.query(Prediksi).order_by(Prediksi.id.desc()).first()
     if not last_item:
-        return "PRD001"
+        return "PRD000001"
     last_num = int(last_item.id_prediksi.replace("PRD", ""))
-    return f"PRD{str(last_num + 1).zfill(3)}"
+    return f"PRD{str(last_num + 1).zfill(6)}"
 
 
 def generate_id_notifikasi(db: Session) -> str:
-    """Format: NTF001, NTF002, ..."""
-    last_item = db.query(Notifikasi).order_by(Notifikasi.id_notifikasi.desc()).first()
+    """Format: NTF000001, NTF000002, ..."""
+    last_item = db.query(Notifikasi).order_by(Notifikasi.id.desc()).first()
     if not last_item:
-        return "NTF001"
+        return "NTF000001"
     last_num = int(last_item.id_notifikasi.replace("NTF", ""))
-    return f"NTF{str(last_num + 1).zfill(3)}"
+    return f"NTF{str(last_num + 1).zfill(6)}"
