@@ -8,6 +8,7 @@ import React, { useContext, useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthContext, AuthProvider } from '../services/AuthContext';
 import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
+import { useFonts } from 'expo-font';
 import { MenuProvider } from 'react-native-popup-menu';
 import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
 import CustomLoading from '../components/CustomLoading';
@@ -38,12 +39,19 @@ const RootLayout = () => {
   const segments = useSegments();
   const router = useRouter();
 
+  const [fontsLoaded, fontError] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
+
   useEffect(() => {
     // Navigasi bar transparan di Android sudah ditangani oleh edgeToEdgeEnabled di app.json
   }, []);
 
   useEffect(() => {
     if (isAuthLoading) return;
+    if (!fontsLoaded && !fontError) return; // Tunggu font selesai dimuat
     if (!segments || segments.length === 0) return; // Router belum siap
 
     const inAuthGroup = (segments[0] as string) === '(auth)';
@@ -54,9 +62,9 @@ const RootLayout = () => {
     } else if (!authenticated && !inAuthGroup) {
       setTimeout(() => router.replace('/(auth)' as any), 100);
     }
-  }, [authenticated, isAuthLoading, segments]);
+  }, [authenticated, isAuthLoading, segments, fontsLoaded, fontError]);
 
-  if (isAuthLoading) {
+  if (isAuthLoading || (!fontsLoaded && !fontError)) {
     return <CustomLoading fullScreen message="Menyiapkan aplikasi..." />;
   }
 
