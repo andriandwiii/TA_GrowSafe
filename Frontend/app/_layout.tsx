@@ -61,12 +61,13 @@ const RootLayout = () => {
     }
   }, [authenticated, isAuthLoading, fontsLoaded, segments]);
 
-  if (!fontsLoaded || isAuthLoading) {
-    return <CustomLoading fullScreen message="Menyiapkan aplikasi..." />;
+  if (fontError) {
+    console.error("Font Error:", fontError);
+    // Continue even if font fails, or show error
   }
 
-  if (fontError) {
-    return <Text>Error memuat font: {fontError.message}</Text>
+  if ((!fontsLoaded && !fontError) || isAuthLoading) {
+    return <CustomLoading fullScreen message="Menyiapkan aplikasi..." />;
   }
 
   return (

@@ -25,10 +25,18 @@ export const AuthProvider = ({ children }) => {
   // ── Load token saat aplikasi pertama kali dibuka ────────────────
   useEffect(() => {
     const loadToken = async () => {
-      try {
-        const token = await SecureStore.getItemAsync('token');
-        const userJson = await SecureStore.getItemAsync('user');
-        const kId = await SecureStore.getItemAsync('activeKumbungId');
+        // Tambahkan timeout 3 detik agar aplikasi tidak stuck jika SecureStore nge-hang di HP tertentu
+        const withTimeout = (promise) => {
+          return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('SecureStore timeout')), 3000))
+          ]);
+        };
+
+        const token = await withTimeout(SecureStore.getItemAsync('token'));
+        const userJson = await withTimeout(SecureStore.getItemAsync('user'));
+        let kId = null;
+        try { kId = await withTimeout(SecureStore.getItemAsync('activeKumbungId')); } catch(e){}
 
         if (token && userJson) {
           const user = JSON.parse(userJson);
