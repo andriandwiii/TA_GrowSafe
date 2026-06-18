@@ -50,7 +50,7 @@ const RootLayout = () => {
   }, []);
 
   useEffect(() => {
-    if (!fontsLoaded || isAuthLoading) return;
+    if ((!fontsLoaded && !fontError) || isAuthLoading) return;
 
     const inAuthGroup = (segments[0] as string) === '(auth)';
 
@@ -59,7 +59,7 @@ const RootLayout = () => {
     } else if (!authenticated && !inAuthGroup) {
       router.replace('/(auth)' as any);
     }
-  }, [authenticated, isAuthLoading, fontsLoaded, segments]);
+  }, [authenticated, isAuthLoading, fontsLoaded, segments, fontError]);
 
   if (fontError) {
     console.error("Font Error:", fontError);
