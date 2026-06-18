@@ -52,7 +52,7 @@ const RootLayout = () => {
   useEffect(() => {
     if (isAuthLoading) return;
     if (!fontsLoaded && !fontError) return; // Tunggu font selesai dimuat
-    if (!segments || segments.length === 0) return; // Router belum siap
+    if (!segments || !segments[0]) return; // Router belum siap
 
     const inAuthGroup = (segments[0] as string) === '(auth)';
 
