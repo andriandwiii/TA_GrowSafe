@@ -57,11 +57,11 @@ const DashboardScreen = () => {
     suhu: 0,
     kelembaban: 0,
     led: 0,
-    status: 'Memuat...', 
+    status: 'Memuat...',
     statusMessage: 'Mengambil data dari server...',
     theme: 'offline' // 'optimal', 'waspada', 'bahaya', 'kritis', 'dingin', 'offline'
   });
-  
+
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeKumbungId, setActiveKumbungId] = useState<string | null>(null);
 
@@ -80,14 +80,14 @@ const DashboardScreen = () => {
     if (s < 22) {
       return { status: 'Terlalu Dingin', message: 'Suhu terlampau dingin. Fase pertumbuhan dan produksi jamur akan terhenti.', theme: 'dingin' };
     }
-    return { status: 'Optimal', message: 'Sistem sedang memproses data lingkungan...', theme: 'optimal' };
+    return { status: 'Optimal', message: 'Sempurna! Suhu dan kelembaban berada pada tingkat paling ideal untuk panen maksimal', theme: 'optimal' };
   };
 
   const fetchSensorData = async (kumbungId: string) => {
     try {
       const response = await apiClient.get(`/sensor/${kumbungId}/latest`);
       const { suhu, kelembaban, total_led_menyala } = response.data;
-      
+
       const st = getKumbungStatus(suhu || 0, kelembaban || 0);
 
       setSensorData({
@@ -123,14 +123,14 @@ const DashboardScreen = () => {
           await SecureStore.setItemAsync('activeKumbungId', kId as string);
         }
       }
-      
+
       if (kId) {
         setActiveKumbungId(kId);
         setKumbungAktif(kId); // Sinkronisasi ke Global Context agar detailPemantauan tidak loading
         await fetchSensorData(kId);
       } else {
-        setSensorData(prev => ({ 
-          ...prev, 
+        setSensorData(prev => ({
+          ...prev,
           status: 'Tidak ada Kumbung',
           statusMessage: 'Silakan tambahkan kumbung terlebih dahulu.',
           theme: 'offline'
@@ -155,11 +155,11 @@ const DashboardScreen = () => {
   useFocusEffect(
     useCallback(() => {
       let intervalId: ReturnType<typeof setInterval>;
-      
+
       const initializeAndPoll = async () => {
         await loadInitialData();
         await fetchUnreadNotifications();
-        
+
         // Setelah load initial data, mulai polling setiap 5 detik
         intervalId = setInterval(async () => {
           const kId = await SecureStore.getItemAsync('activeKumbungId');
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   statusKritis: { borderColor: 'rgba(183, 28, 28, 0.2)' },
   statusDingin: { borderColor: 'rgba(33, 150, 243, 0.2)' },
   statusOffline: { borderColor: 'rgba(148, 163, 184, 0.2)' },
-  
+
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   iconBgKritis: { backgroundColor: '#FFCDD2' },
   iconBgDingin: { backgroundColor: '#E3F2FD' },
   iconBgOffline: { backgroundColor: '#F1F5F9' },
-  
+
   statusTextContainer: {
     flex: 1,
   },

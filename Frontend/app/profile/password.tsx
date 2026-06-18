@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import Colors from '../../constants/Colors';
+import { useAuth } from '../../services/AuthContext';
+import apiClient from '../../services/api';
 
 export default function PasswordScreen() {
   const router = useRouter();
+  const { user, updateProfile } = useAuth();
   
   const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!oldPass || !newPass || !confirmPass) {
       Toast.show({
         type: 'error',
@@ -33,12 +37,45 @@ export default function PasswordScreen() {
       return;
     }
     
-    Toast.show({
-      type: 'success',
-      text1: 'Berhasil',
-      text2: 'Password Anda telah berhasil diperbarui.',
-    });
-    router.back();
+    setIsLoading(true);
+
+    try {
+      // 1. Verifikasi password lama dengan memanggil API login
+      const params = new URLSearchParams();
+      params.append('username', user?.username || '');
+      params.append('password', oldPass);
+
+      await apiClient.post('/auth/login', params, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      // 2. Jika sukses (tidak throw error), maka password lama benar. Lanjut update password.
+      const result = await updateProfile({ password: newPass });
+      
+      if (result.success) {
+        Toast.show({
+          type: 'success',
+          text1: 'Berhasil',
+          text2: 'Password Anda telah berhasil diperbarui.',
+        });
+        router.back();
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Gagal',
+          text2: result.error || 'Terjadi kesalahan saat menyimpan password.',
+        });
+      }
+    } catch (e) {
+      // Error dari endpoint login (401 Unauthorized)
+      Toast.show({
+        type: 'error',
+        text1: 'Validasi Gagal',
+        text2: 'Password saat ini yang Anda masukkan salah.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -96,8 +133,16 @@ export default function PasswordScreen() {
       </ScrollView>
 
       <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Perbarui Password</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, isLoading && { opacity: 0.7 }]} 
+          onPress={handleSave}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>Perbarui Password</Text>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>

@@ -105,7 +105,7 @@ export default function BantuanScreen() {
             <Text style={styles.contactDesc}>Tim teknis kami siap membantu Anda menyelesaikan masalah.</Text>
           </View>
           <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
-            <Ionicons name="chatbubbles-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Ionicons name="chatbubbles-outline" size={20} color="#0284C7" style={{ marginRight: 8 }} />
             <Text style={styles.contactButtonText}>Hubungi Kami</Text>
           </TouchableOpacity>
         </Animated.View>

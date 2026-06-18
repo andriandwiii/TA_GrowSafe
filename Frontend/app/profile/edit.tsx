@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
@@ -10,19 +10,41 @@ import Colors from '../../constants/Colors';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   
-  const [name, setName] = useState(user?.nama || 'Andrian Dwi');
-  const [username, setUsername] = useState('andrian_dwi');
-  const [email, setEmail] = useState(user?.email || 'andrian@gmail.com');
+  const [name, setName] = useState(user?.nama || '');
+  const [username, setUsername] = useState(user?.username || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = () => {
-    Toast.show({
-      type: 'success',
-      text1: 'Berhasil',
-      text2: 'Profil Anda telah berhasil diperbarui.',
-    });
-    router.back();
+  const handleSave = async () => {
+    if (!name || !username || !email) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validasi Gagal',
+        text2: 'Semua field harus diisi.',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await updateProfile({ nama: name, username, email });
+    setIsLoading(false);
+
+    if (result.success) {
+      Toast.show({
+        type: 'success',
+        text1: 'Berhasil',
+        text2: 'Profil Anda telah berhasil diperbarui.',
+      });
+      router.back();
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Gagal',
+        text2: result.error || 'Terjadi kesalahan saat menyimpan profil.',
+      });
+    }
   };
 
   return (
@@ -43,11 +65,8 @@ export default function EditProfileScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.profilePicContainer}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{name.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarText}>{name ? name.charAt(0).toUpperCase() : 'U'}</Text>
           </View>
-          <TouchableOpacity style={styles.cameraButton}>
-            <Ionicons name="camera" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.formContainer}>
@@ -79,8 +98,16 @@ export default function EditProfileScreen() {
 
       {/* Bottom Button */}
       <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Simpan Perubahan</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, isLoading && { opacity: 0.7 }]} 
+          onPress={handleSave} 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>Simpan Perubahan</Text>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
@@ -97,7 +124,6 @@ const styles = StyleSheet.create({
   profilePicContainer: { alignItems: 'center', marginBottom: 32, marginTop: 10 },
   avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: Colors.light.primary ?? '#2E7D32', justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: '#FFFFFF', shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 },
   avatarText: { fontFamily: 'Poppins-Bold', fontSize: 36, color: '#FFFFFF' },
-  cameraButton: { position: 'absolute', bottom: 0, right: '35%', width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
   formContainer: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2 },
   inputGroup: { marginBottom: 20 },
   label: { fontFamily: 'Poppins-Medium', fontSize: 13, color: '#475569', marginBottom: 8 },
