@@ -149,7 +149,13 @@ const RiwayatScreen = () => {
           activeOpacity={0.8}
           onPress={() => router.push(`/detail/${item.id_yolo}` as any)}
         >
-          <Image source={{ uri: item.image_path }} style={styles.thumbnail} />
+          <Image 
+            source={{ 
+              uri: item.image_path,
+              headers: { 'ngrok-skip-browser-warning': 'true' }
+            }} 
+            style={styles.thumbnail} 
+          />
           <View style={styles.cardContent}>
             <View style={styles.cardHeader}>
               <Text style={styles.dateText}>{item.waktu_upload}</Text>

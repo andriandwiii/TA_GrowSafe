@@ -148,7 +148,14 @@ export default function HistoryDetailScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Gambar Hasil Pindai */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.imageContainer}>
-          <Image source={{ uri: data.image_path }} style={styles.image} resizeMode="cover" />
+          <Image 
+            source={{ 
+              uri: data.image_path,
+              headers: { 'ngrok-skip-browser-warning': 'true' }
+            }} 
+            style={styles.image} 
+            resizeMode="cover" 
+          />
           <View style={[styles.statusBadge, data.status === 'Bahaya' ? styles.badgeDanger : styles.badgeSafe]}>
             <Text style={styles.statusBadgeText}>{data.status}</Text>
           </View>

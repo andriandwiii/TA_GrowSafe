@@ -9,6 +9,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthContext, AuthProvider } from '../services/AuthContext';
 import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 import { MenuProvider } from 'react-native-popup-menu';
 import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
 import CustomLoading from '../components/CustomLoading';
@@ -43,6 +44,7 @@ const RootLayout = () => {
     'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
     'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.ttf'),
     'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+    ...Ionicons.font,
   });
 
   useEffect(() => {
