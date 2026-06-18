@@ -6,17 +6,26 @@
 import Constants from 'expo-constants';
 import axios from 'axios';
 
-// Fallback IP jika aplikasi di-*build* (APK) atau gagal mendeteksi IP otomatis
-let API_BASE_URL = 'http://10.111.10.218:8000';
+// ==========================================
+// PENGATURAN KONEKSI BACKEND
+// ==========================================
+// PENTING UNTUK APK: Wajib true agar tidak error saat ganti WiFi
+const USE_NGROK = true;
+const NGROK_URL = 'https://possum-albatross-veggie.ngrok-free.dev';
 
-if (__DEV__) {
+let API_BASE_URL = 'http://10.111.10.218:8000'; // Fallback aman
+
+if (USE_NGROK) {
+  API_BASE_URL = NGROK_URL;
+  console.log(`[GrowSafe API] Terhubung via Ngrok: ${API_BASE_URL}`);
+} else if (__DEV__) {
   // Mendapatkan IP laptop yang menjalankan server Metro Expo secara otomatis
   const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest?.debuggerHost || Constants?.manifest2?.extra?.expoGo?.debuggerHost;
-  
+
   if (hostUri) {
-    const laptopIp = hostUri.split(':')[0]; // Ambil IP saja tanpa port metro (misal 192.168.1.5)
-    API_BASE_URL = `http://${laptopIp}:8000`; // Ganti dengan port backend Anda (8000)
-    console.log(`[GrowSafe API] Backend otomatis terhubung ke: ${API_BASE_URL}`);
+    const laptopIp = hostUri.split(':')[0]; // Ambil IP saja tanpa port metro
+    API_BASE_URL = `http://${laptopIp}:8000`;
+    console.log(`[GrowSafe API] Terhubung via Lokal (WiFi): ${API_BASE_URL}`);
   }
 }
 
