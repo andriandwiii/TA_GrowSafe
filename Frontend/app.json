@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "GrowSafe",
-    "slug": "GrowSafe",
+    "slug": "Frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/GrowsafeLogo.png",
