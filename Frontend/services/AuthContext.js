@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
   // ── Load token saat aplikasi pertama kali dibuka ────────────────
   useEffect(() => {
     const loadToken = async () => {
+      try {
         // Tambahkan timeout 3 detik agar aplikasi tidak stuck jika SecureStore nge-hang di HP tertentu
         const withTimeout = (promise) => {
           return Promise.race([
