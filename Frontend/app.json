@@ -39,18 +39,7 @@
         }
       ],
       "expo-secure-store",
-      "expo-asset",
-      [
-        "expo-font",
-        {
-          "fonts": [
-            "./assets/fonts/Poppins-Regular.ttf",
-            "./assets/fonts/Poppins-SemiBold.ttf",
-            "./assets/fonts/Poppins-Bold.ttf",
-            "./assets/fonts/Ionicons.ttf"
-          ]
-        }
-      ]
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

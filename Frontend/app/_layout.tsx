@@ -9,9 +9,13 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthContext, AuthProvider } from '../services/AuthContext';
 import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { MenuProvider } from 'react-native-popup-menu';
 import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
 import CustomLoading from '../components/CustomLoading';
+
+// Cegah splash screen hilang sebelum font dimuat
+SplashScreen.preventAutoHideAsync();
 
 const toastConfig: ToastConfig = {
   success: (props) => (
@@ -46,8 +50,10 @@ const RootLayout = () => {
   });
 
   useEffect(() => {
-    // Navigasi bar transparan di Android sudah ditangani oleh edgeToEdgeEnabled di app.json
-  }, []);
+    if ((fontsLoaded || fontError) && !isAuthLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, isAuthLoading]);
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -64,7 +70,12 @@ const RootLayout = () => {
     }
   }, [authenticated, isAuthLoading, segments, fontsLoaded, fontError]);
 
-  if (isAuthLoading || (!fontsLoaded && !fontError)) {
+  // Tampilkan loading screen saat font atau auth belum siap
+  if (!fontsLoaded && !fontError) {
+    return null; // Splash screen masih tampil
+  }
+
+  if (isAuthLoading) {
     return <CustomLoading fullScreen message="Menyiapkan aplikasi..." />;
   }
 
