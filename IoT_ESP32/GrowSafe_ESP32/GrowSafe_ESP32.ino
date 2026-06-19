@@ -5,12 +5,12 @@
 #include <esp_task_wdt.h>  // Watchdog Timer bawaan ESP32
 
 // ================= PENGATURAN WIFI =================
-const char* ssid = "iPhone";         // Ganti dengan nama WiFi / Hotspot
+const char* ssid = "Redmi 10";         // Ganti dengan nama WiFi / Hotspot
 const char* password = "andriandwi"; // Ganti dengan password WiFi
 
 // ================= PENGATURAN LOKAL GROWSAFE =======
 // Ganti IP di bawah ini dengan IP IPv4 laptop Anda (lihat di cmd -> ipconfig)
-const char* SERVER_URL = "http://192.168.0.111:8000/sensor/"; 
+const char* SERVER_URL = "https://possum-albatross-veggie.ngrok-free.dev/sensor/"; 
 const String ID_KUMBUNG = "KMB001"; // Sesuaikan dengan ID kumbung di database Anda
 
 // ================= PENGATURAN THINGSPEAK ===========
@@ -49,7 +49,12 @@ void setup() {
   
   // ── Aktifkan Watchdog Timer ──────────────────────
   // Jika program hang/crash selama 30 detik, ESP32 otomatis restart
-  esp_task_wdt_init(WDT_TIMEOUT, true);  // true = panic (auto restart)
+  esp_task_wdt_config_t twdt_config = {
+      .timeout_ms = WDT_TIMEOUT * 1000,
+      .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
+      .trigger_panic = true,
+  };
+  esp_task_wdt_init(&twdt_config);
   esp_task_wdt_add(NULL);                // Pantau task utama (loop)
   Serial.println("✅ Watchdog Timer aktif (30 detik)");
   
