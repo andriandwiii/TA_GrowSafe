@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, StatusBar, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Camera, CameraView } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -29,6 +29,7 @@ const ScanScreen = () => {
   const router = useRouter();
   const isFocused = useIsFocused();
   const { kumbungAktif } = useAuth();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
@@ -63,21 +64,26 @@ const ScanScreen = () => {
           type: 'image/jpeg',
         } as any);
 
-        const response = await apiClient.post('/predict/image', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+        const response = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
+          method: 'POST',
+          body: formData,
         });
         
-        const newHistoryItem = response.data;
+        if (!response.ok) {
+           const errData = await response.json();
+           const detail = Array.isArray(errData.detail) ? errData.detail[0]?.msg : errData.detail;
+           throw new Error(detail || 'Upload gagal, periksa koneksi atau server.');
+        }
+        
+        const newHistoryItem = await response.json();
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
 
       } catch (error: any) {
-        console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
+        console.error('Gagal mengambil atau mengirim gambar:', error.message);
         Toast.show({
           type: 'error',
           text1: 'Gagal Pemindaian',
-          text2: error.response?.data?.detail || 'Pastikan Anda terhubung ke internet.',
+          text2: error.message || 'Pastikan Anda terhubung ke internet.',
         });
       } finally {
         setIsScanning(false);
@@ -130,21 +136,26 @@ const ScanScreen = () => {
           name: 'upload.jpg',
         } as any);
         
-        const response = await apiClient.post('/predict/image', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+        const response = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
+          method: 'POST',
+          body: formData,
         });
         
-        const newHistoryItem = response.data;
+        if (!response.ok) {
+           const errData = await response.json();
+           const detail = Array.isArray(errData.detail) ? errData.detail[0]?.msg : errData.detail;
+           throw new Error(detail || 'Upload gagal, periksa koneksi atau server.');
+        }
+        
+        const newHistoryItem = await response.json();
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
       }
     } catch (error: any) {
-      console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
+      console.error('Gagal mengambil atau mengirim gambar:', error.message);
       Toast.show({
         type: 'error',
         text1: 'Gagal Mengunggah',
-        text2: error.response?.data?.detail || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.',
+        text2: error.message || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.',
       });
     } finally {
       setIsScanning(false);
@@ -174,11 +185,11 @@ const ScanScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor="black" />
       
       <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} facing="back">
-        <SafeAreaView style={styles.overlay}>
+        <View style={styles.overlay}>
           {isScanning && <CustomLoading fullScreen message="Menganalisis gambar..." />}
           
           {/* Header */}
-          <Animated.View entering={FadeInUp.delay(100).springify()} style={styles.header}>
+          <Animated.View entering={FadeInUp.delay(100).springify()} style={[styles.header, { paddingTop: insets.top + 16 }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.iconButton} activeOpacity={0.7}>
               <Ionicons name="close" size={28} color="white" />
             </TouchableOpacity>
@@ -233,7 +244,7 @@ const ScanScreen = () => {
             <View style={styles.galleryButtonPlaceholder} />
           </Animated.View>
 
-        </SafeAreaView>
+        </View>
       </CameraView>
     </View>
   );
