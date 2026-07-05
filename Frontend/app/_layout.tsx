@@ -12,6 +12,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { MenuProvider } from 'react-native-popup-menu';
 import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 import CustomLoading from '../components/CustomLoading';
 
 // Cegah splash screen hilang sebelum font dimuat
@@ -50,7 +51,7 @@ const RootLayout = () => {
     'Poppins-Medium': require('../assets/fonts/Poppins-Medium.ttf'),
     'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.ttf'),
     'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
-    'Ionicons': require('../assets/fonts/Ionicons.ttf'),
+    ...Ionicons.font,
   });
 
   // ── Sembunyikan splash screen setelah font + auth siap ─────────

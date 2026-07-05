@@ -14,6 +14,7 @@ import Colors from '../constants/Colors';
 import { useRouter, Stack } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import Toast from 'react-native-toast-message';
 import CustomLoading from '../components/CustomLoading';
 import apiClient from '../services/api';
@@ -47,10 +48,17 @@ const ScanScreen = () => {
 
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, isImageMirror: false });
         
+        // Kompres dan ubah ukuran gambar agar pengiriman lebih cepat
+        const manipResult = await ImageManipulator.manipulateAsync(
+          photo.uri,
+          [{ resize: { width: 640 } }],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        
         const formData = new FormData();
         formData.append('id_kumbung', kumbungAktif);
         formData.append('file', {
-          uri: photo.uri,
+          uri: manipResult.uri,
           name: 'photo.jpg',
           type: 'image/jpeg',
         } as any);
@@ -107,10 +115,17 @@ const ScanScreen = () => {
         setIsScanning(true);
         const photo = result.assets[0];
         
+        // Kompres dan ubah ukuran gambar agar pengiriman lebih cepat
+        const manipResult = await ImageManipulator.manipulateAsync(
+          photo.uri,
+          [{ resize: { width: 640 } }],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        
         const formData = new FormData();
         formData.append('id_kumbung', kumbungAktif);
         formData.append('file', {
-          uri: photo.uri,
+          uri: manipResult.uri,
           type: 'image/jpeg',
           name: 'upload.jpg',
         } as any);

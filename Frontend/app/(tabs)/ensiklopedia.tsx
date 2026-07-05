@@ -12,7 +12,7 @@ import {
   FlatList,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Colors from '../../constants/Colors';
 import EnsiklopediaCard, { EnsiklopediaItem } from '../../components/EnsiklopediaCard';
@@ -52,14 +52,15 @@ const ENCYCLOPEDIA_DATA: EnsiklopediaItem[] = [
 ];
 
 const EnsiklopediaScreen = () => {
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       
       {/* Background Decor */}
       <View style={styles.bgDecorTop} />
 
-      <Animated.View entering={FadeIn.delay(100)} style={styles.header}>
+      <Animated.View entering={FadeIn.delay(100)} style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Ensiklopedia</Text>
         <Text style={styles.headerSubtitle}>Kamus referensi penyakit & hama Jamur Tiram</Text>
       </Animated.View>
@@ -71,7 +72,7 @@ const EnsiklopediaScreen = () => {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

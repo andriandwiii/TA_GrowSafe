@@ -4,13 +4,14 @@
 // Deskripsi: Form register GrowSafe dengan desain Bottom Sheet modern.
 // Perbaikan:
 //   - KeyboardAvoidingView lebih robust di Android
-//   - Perbaiki stopPropagation → pakai Pressable agar kompatibel
 //   - Link "Masuk di sini" pakai router.replace ke login (bukan router.back)
 //   - Tambah accessibilityLabel dan hitSlop pada eye icon
 //   - Tambah keyboardShouldPersistTaps pada ScrollView
+//   - Menggunakan Animated & PanResponder agar bisa dislide ke bawah beneran
+//   - Pembaruan tema warna agar senada dengan halaman lain (Dashboard)
 // ===================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +23,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +43,46 @@ const RegisterScreen = () => {
 
   const router = useRouter();
   const { register } = useAuth();
+
+  // Animasi Bottom Sheet
+  const panY = useRef(new Animated.Value(0)).current;
+
+  const resetPositionAnim = Animated.timing(panY, {
+    toValue: 0,
+    duration: 300,
+    useNativeDriver: true,
+  });
+
+  const closeAnim = Animated.timing(panY, {
+    toValue: 1000, // geser ke bawah sejauh 1000px untuk menutup
+    duration: 300,
+    useNativeDriver: true,
+  });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Aktifkan pan responder jika ditarik ke bawah (vertikal > 10)
+        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Hanya izinkan ditarik ke bawah
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 150 || gestureState.vy > 1.5) {
+          // Tutup modal jika ditarik cukup jauh atau cepat
+          closeAnim.start(() => router.back());
+        } else {
+          // Kembalikan ke posisi semula
+          resetPositionAnim.start();
+        }
+      },
+    })
+  ).current;
 
   const handleRegister = async () => {
     if (!nama.trim() || !email.trim() || !username.trim() || !password.trim()) {
@@ -82,25 +125,27 @@ const RegisterScreen = () => {
   };
 
   return (
-    // KeyboardAvoidingView: 'padding' di iOS, 'height' di Android lebih stabil
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* Overlay gelap — tap untuk tutup modal */}
-      <TouchableWithoutFeedback onPress={() => router.back()}>
+      <TouchableWithoutFeedback onPress={() => closeAnim.start(() => router.back())}>
         <View style={styles.overlay}>
 
-          {/* Gunakan Pressable biasa agar stopPropagation kompatibel Android */}
-          <Pressable onPress={() => {/* cegah bubble ke overlay */ }} style={styles.sheet}>
+          {/* Animated.View menampung bottom sheet agar bisa dianimasikan Y-nya */}
+          <Animated.View 
+            style={[
+              styles.sheet, 
+              { transform: [{ translateY: panY }] }
+            ]}
+          >
+            {/* Area drag: Handle bar dan teks judul */}
+            <View {...panResponder.panHandlers} style={styles.dragArea}>
+              <View style={styles.handle} />
+              <Text style={styles.greetingText}>Bergabung dengan</Text>
+              <Text style={styles.title}>GrowSafe</Text>
+            </View>
 
-            {/* Handle drag */}
-            <View style={styles.handle} />
-
-            <Text style={styles.greetingText}>Bergabung dengan</Text>
-            <Text style={styles.title}>GrowSafe</Text>
-
-            {/* ScrollView agar bisa di-scroll di HP layar kecil */}
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -111,13 +156,13 @@ const RegisterScreen = () => {
                 <Ionicons
                   name="person-outline"
                   size={20}
-                  color={Colors.light.textSecondary ?? '#999'}
+                  color="#94A3B8"
                   style={styles.icon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Nama Lengkap"
-                  placeholderTextColor={Colors.light.textSecondary ?? '#999'}
+                  placeholderTextColor="#94A3B8"
                   value={nama}
                   onChangeText={setNama}
                   autoCapitalize="words"
@@ -131,13 +176,13 @@ const RegisterScreen = () => {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={Colors.light.textSecondary ?? '#999'}
+                  color="#94A3B8"
                   style={styles.icon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Email"
-                  placeholderTextColor={Colors.light.textSecondary ?? '#999'}
+                  placeholderTextColor="#94A3B8"
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -153,13 +198,13 @@ const RegisterScreen = () => {
                 <Ionicons
                   name="at-outline"
                   size={20}
-                  color={Colors.light.textSecondary ?? '#999'}
+                  color="#94A3B8"
                   style={styles.icon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Username"
-                  placeholderTextColor={Colors.light.textSecondary ?? '#999'}
+                  placeholderTextColor="#94A3B8"
                   value={username}
                   onChangeText={setUsername}
                   autoCapitalize="none"
@@ -174,13 +219,13 @@ const RegisterScreen = () => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={Colors.light.textSecondary ?? '#999'}
+                  color="#94A3B8"
                   style={styles.icon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Password (min. 8 karakter)"
-                  placeholderTextColor={Colors.light.textSecondary ?? '#999'}
+                  placeholderTextColor="#94A3B8"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -197,7 +242,7 @@ const RegisterScreen = () => {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={20}
-                    color={Colors.light.textSecondary ?? '#999'}
+                    color="#94A3B8"
                   />
                 </TouchableOpacity>
               </View>
@@ -207,7 +252,7 @@ const RegisterScreen = () => {
                 style={({ pressed }) => [
                   styles.button,
                   { opacity: isLoading ? 0.7 : 1 },
-                  { backgroundColor: pressed ? '#256528' : Colors.light.primary },
+                  { backgroundColor: pressed ? '#1B5E20' : Colors.light.primary ?? '#2E7D32' },
                 ]}
                 onPress={handleRegister}
                 disabled={isLoading}
@@ -223,14 +268,12 @@ const RegisterScreen = () => {
               {/* Navigasi ke Login */}
               <View style={styles.switchContainer}>
                 <Text style={styles.switchText}>Sudah punya akun? </Text>
-                {/* Pakai replace agar transisi modal mulus, bukan back */}
                 <TouchableOpacity onPress={() => router.replace('/(auth)/login' as any)}>
                   <Text style={styles.switchLink}>Masuk di sini</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
-
-          </Pressable>
+          </Animated.View>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -240,43 +283,54 @@ const RegisterScreen = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(30, 41, 59, 0.6)', // Gelap dengan tone kebiruan
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 40,
     maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  dragArea: {
+    paddingBottom: 16,
+    // Area ini yang merespon gestur slide ke bawah
   },
   handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 2,
+    width: 48,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
     alignSelf: 'center',
     marginBottom: 24,
   },
   greetingText: {
     fontFamily: 'Poppins-Regular',
     fontSize: 16,
-    color: Colors.light.textSecondary ?? '#888',
+    color: '#64748B',
   },
   title: {
     fontFamily: 'Poppins-Bold',
     fontSize: 28,
-    color: Colors.light.text ?? '#111',
-    marginBottom: 24,
+    color: '#1E293B',
+    marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.light.backgroundSecondary ?? '#F5F5F5',
-    borderRadius: 12,
-    marginBottom: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    marginBottom: 16,
     paddingHorizontal: 16,
   },
   icon: {
@@ -284,20 +338,25 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 15,
+    paddingVertical: 16,
     fontSize: 15,
     fontFamily: 'Poppins-Regular',
-    color: Colors.light.text ?? '#111',
+    color: '#1E293B',
   },
   eyeIcon: {
     padding: 8,
   },
   button: {
-    borderRadius: 14,
-    paddingVertical: 15,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 24,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     color: 'white',
@@ -311,14 +370,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   switchText: {
-    fontFamily: 'Poppins-Regular',
+    fontFamily: 'Poppins-Medium',
     fontSize: 14,
-    color: Colors.light.textSecondary ?? '#888',
+    color: '#64748B',
   },
   switchLink: {
     fontFamily: 'Poppins-SemiBold',
     fontSize: 14,
-    color: Colors.light.primary,
+    color: Colors.light.primary ?? '#2E7D32',
   },
 });
 

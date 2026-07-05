@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   ActivityIndicator,
   StatusBar,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -24,6 +25,7 @@ export default function HistoryDetailScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const { kumbungAktif } = useAuth();
 
   useEffect(() => {
@@ -148,14 +150,20 @@ export default function HistoryDetailScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Gambar Hasil Pindai */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.imageContainer}>
-          <Image 
-            source={{ 
-              uri: data.image_path,
-              headers: { 'ngrok-skip-browser-warning': 'true' }
-            }} 
-            style={styles.image} 
-            resizeMode="cover" 
-          />
+          <TouchableOpacity 
+            activeOpacity={0.9} 
+            onPress={() => setIsModalVisible(true)}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <Image 
+              source={{ 
+                uri: data.image_path,
+                headers: { 'ngrok-skip-browser-warning': 'true' }
+              }} 
+              style={styles.image} 
+              resizeMode="cover" 
+            />
+          </TouchableOpacity>
           <View style={[styles.statusBadge, data.status === 'Bahaya' ? styles.badgeDanger : styles.badgeSafe]}>
             <Text style={styles.statusBadgeText}>{data.status}</Text>
           </View>
@@ -199,6 +207,36 @@ export default function HistoryDetailScreen() {
           ))}
         </Animated.View>
       </ScrollView>
+
+      {/* Modal Gambar Penuh */}
+      <Modal 
+        visible={isModalVisible} 
+        transparent={true} 
+        animationType="fade"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalBackground}
+          activeOpacity={1} 
+          onPress={() => setIsModalVisible(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalCloseButton} 
+            onPress={() => setIsModalVisible(false)}
+          >
+            <Ionicons name="close" size={28} color="white" />
+          </TouchableOpacity>
+          <Image 
+            source={{ 
+              uri: data?.image_path,
+              headers: { 'ngrok-skip-browser-warning': 'true' }
+            }} 
+            style={styles.fullScreenImage} 
+            resizeMode="contain" 
+          />
+        </TouchableOpacity>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -374,5 +412,24 @@ const styles = StyleSheet.create({
     fontSize: 13, 
     color: '#475569', 
     lineHeight: 22 
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
   },
 });

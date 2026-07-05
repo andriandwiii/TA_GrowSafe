@@ -16,8 +16,8 @@ import {
   Image,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import Colors from '../../constants/Colors';
@@ -46,6 +46,7 @@ export type PrediksiHistoryItem = {
 const RiwayatScreen = () => {
   const router = useRouter();
   const { kumbungAktif } = useAuth();
+  const insets = useSafeAreaInsets();
   
   const [activeTab, setActiveTab] = useState<'deteksi' | 'prediksi'>('deteksi');
   
@@ -205,12 +206,12 @@ const RiwayatScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar translucent={true} backgroundColor="transparent" barStyle="dark-content" />
       
       <View style={styles.bgDecorTop} />
 
-      <Animated.View entering={FadeIn.delay(100)} style={styles.headerContainer}>
+      <Animated.View entering={FadeIn.delay(100)} style={[styles.headerContainer, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Riwayat</Text>
         <Text style={styles.headerSubtitle}>Hasil deteksi kamera & prediksi panen tersimpan</Text>
         
@@ -270,7 +271,7 @@ const RiwayatScreen = () => {
           />
         )
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

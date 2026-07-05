@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   growText: {
-    color: Colors.light.accent,
+    color: 'white',
   },
   safeText: {
     color: 'white',
