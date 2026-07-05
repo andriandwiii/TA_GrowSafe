@@ -64,26 +64,28 @@ const ScanScreen = () => {
           type: 'image/jpeg',
         } as any);
 
-        const response = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
+        const uploadResponse = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
           method: 'POST',
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+          },
           body: formData,
         });
-        
-        if (!response.ok) {
-           const errData = await response.json();
-           const detail = Array.isArray(errData.detail) ? errData.detail[0]?.msg : errData.detail;
-           throw new Error(detail || 'Upload gagal, periksa koneksi atau server.');
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw { response: { data: errorData } };
         }
         
-        const newHistoryItem = await response.json();
+        const newHistoryItem = await uploadResponse.json();
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
 
       } catch (error: any) {
-        console.error('Gagal mengambil atau mengirim gambar:', error.message);
+        console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
         Toast.show({
           type: 'error',
           text1: 'Gagal Pemindaian',
-          text2: error.message || 'Pastikan Anda terhubung ke internet.',
+          text2: error.response?.data?.detail || 'Pastikan Anda terhubung ke internet.',
         });
       } finally {
         setIsScanning(false);
@@ -136,26 +138,28 @@ const ScanScreen = () => {
           name: 'upload.jpg',
         } as any);
         
-        const response = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
+        const uploadResponse = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
           method: 'POST',
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+          },
           body: formData,
         });
-        
-        if (!response.ok) {
-           const errData = await response.json();
-           const detail = Array.isArray(errData.detail) ? errData.detail[0]?.msg : errData.detail;
-           throw new Error(detail || 'Upload gagal, periksa koneksi atau server.');
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw { response: { data: errorData } };
         }
         
-        const newHistoryItem = await response.json();
+        const newHistoryItem = await uploadResponse.json();
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
       }
     } catch (error: any) {
-      console.error('Gagal mengambil atau mengirim gambar:', error.message);
+      console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
       Toast.show({
         type: 'error',
         text1: 'Gagal Mengunggah',
-        text2: error.message || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.',
+        text2: error.response?.data?.detail || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.',
       });
     } finally {
       setIsScanning(false);
