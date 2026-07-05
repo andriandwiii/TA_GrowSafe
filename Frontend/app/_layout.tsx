@@ -4,7 +4,7 @@
 // Deskripsi: Diperbarui untuk menambahkan layar kamera sebagai modal.
 // ===================================================================
 
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useCallback } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AuthContext, AuthProvider } from '../services/AuthContext';
 import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
@@ -43,18 +43,28 @@ const RootLayout = () => {
   const segments = useSegments();
   const router = useRouter();
 
+  // ── Load semua font yang digunakan di project ─────────────────
+  // Poppins (custom) + Ionicons (untuk icon di seluruh app)
   const [fontsLoaded, fontError] = useFonts({
     'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Medium': require('../assets/fonts/Poppins-Medium.ttf'),
     'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.ttf'),
     'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+    'Ionicons': require('../assets/fonts/Ionicons.ttf'),
   });
 
-  useEffect(() => {
+  // ── Sembunyikan splash screen setelah font + auth siap ─────────
+  const onLayoutReady = useCallback(async () => {
     if ((fontsLoaded || fontError) && !isAuthLoading) {
-      SplashScreen.hideAsync();
+      await SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError, isAuthLoading]);
 
+  useEffect(() => {
+    onLayoutReady();
+  }, [onLayoutReady]);
+
+  // ── Navigasi otomatis berdasarkan status auth ──────────────────
   useEffect(() => {
     if (isAuthLoading) return;
     if (!fontsLoaded && !fontError) return; // Tunggu font selesai dimuat
@@ -105,11 +115,3 @@ export default function AppLayout() {
     </AuthProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
