@@ -25,6 +25,7 @@ const { width } = Dimensions.get('window');
 const ScanScreen = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -39,6 +40,10 @@ const ScanScreen = () => {
   }, []);
 
   const handleTakePicture = async () => {
+    if (!isCameraReady) {
+      Toast.show({ type: 'info', text1: 'Sabar', text2: 'Kamera sedang disiapkan...' });
+      return;
+    }
     if (cameraRef.current && !isScanning) {
       setIsScanning(true);
       try {
@@ -102,7 +107,7 @@ const ScanScreen = () => {
 
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -172,7 +177,12 @@ const ScanScreen = () => {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" backgroundColor="black" />
       
-      <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} facing="back">
+      <CameraView 
+        style={StyleSheet.absoluteFill} 
+        ref={cameraRef} 
+        facing="back"
+        onCameraReady={() => setIsCameraReady(true)}
+      >
         <View style={styles.overlay}>
           {isScanning && <CustomLoading fullScreen message="Menganalisis gambar..." />}
           
