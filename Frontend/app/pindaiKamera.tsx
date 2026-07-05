@@ -79,11 +79,7 @@ const ScanScreen = () => {
       } catch (error: any) {
         const errMsg = error.response?.data?.detail || error.message || String(error);
         console.error('Gagal mengirim gambar:', errMsg);
-        Toast.show({
-          type: 'error',
-          text1: 'Gagal Pemindaian',
-          text2: `Error: ${errMsg}`,
-        });
+        Alert.alert('Gagal Pemindaian', `Error Detail:\n${errMsg}`);
       } finally {
         setIsScanning(false);
       }
@@ -148,11 +144,7 @@ const ScanScreen = () => {
     } catch (error: any) {
       const errMsg = error.response?.data?.detail || error.message || String(error);
       console.error('Gagal mengirim gambar:', errMsg);
-      Toast.show({
-        type: 'error',
-        text1: 'Gagal Mengunggah',
-        text2: `Error: ${errMsg}`,
-      });
+      Alert.alert('Gagal Mengunggah', `Error Detail:\n${errMsg}`);
     } finally {
       setIsScanning(false);
     }
