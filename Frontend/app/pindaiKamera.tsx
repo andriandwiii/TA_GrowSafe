@@ -64,33 +64,25 @@ const ScanScreen = () => {
           type: 'image/jpeg',
         } as any);
 
-        const url = `${apiClient.defaults.baseURL}/predict/image`;
-        const token = apiClient.defaults.headers.common['Authorization'] as string;
-        const fetchResponse = await fetch(url, {
-          method: 'POST',
-          body: formData,
+        const response = await apiClient.post('/predict/image', formData, {
           headers: {
-            'ngrok-skip-browser-warning': 'true',
-            'Accept': 'application/json',
-            ...(token ? { 'Authorization': token } : {}),
+            'Content-Type': 'multipart/form-data',
+          },
+          transformRequest: (data) => {
+            return data;
           },
         });
         
-        const responseData = await fetchResponse.json();
-        
-        if (!fetchResponse.ok) {
-          throw { response: { data: responseData } };
-        }
-        
-        const newHistoryItem = responseData;
+        const newHistoryItem = response.data;
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
 
       } catch (error: any) {
-        console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
+        const errMsg = error.response?.data?.detail || error.message || String(error);
+        console.error('Gagal mengirim gambar:', errMsg);
         Toast.show({
           type: 'error',
           text1: 'Gagal Pemindaian',
-          text2: error.response?.data?.detail || 'Pastikan Anda terhubung ke internet.',
+          text2: `Error: ${errMsg}`,
         });
       } finally {
         setIsScanning(false);
@@ -143,33 +135,25 @@ const ScanScreen = () => {
           name: 'upload.jpg',
         } as any);
         
-        const url = `${apiClient.defaults.baseURL}/predict/image`;
-        const token = apiClient.defaults.headers.common['Authorization'] as string;
-        const fetchResponse = await fetch(url, {
-          method: 'POST',
-          body: formData,
+        const response = await apiClient.post('/predict/image', formData, {
           headers: {
-            'ngrok-skip-browser-warning': 'true',
-            'Accept': 'application/json',
-            ...(token ? { 'Authorization': token } : {}),
+            'Content-Type': 'multipart/form-data',
+          },
+          transformRequest: (data) => {
+            return data;
           },
         });
         
-        const responseData = await fetchResponse.json();
-        
-        if (!fetchResponse.ok) {
-          throw { response: { data: responseData } };
-        }
-        
-        const newHistoryItem = responseData;
+        const newHistoryItem = response.data;
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
       }
     } catch (error: any) {
-      console.error('Gagal mengambil atau mengirim gambar:', error.response?.data || error.message);
+      const errMsg = error.response?.data?.detail || error.message || String(error);
+      console.error('Gagal mengirim gambar:', errMsg);
       Toast.show({
         type: 'error',
         text1: 'Gagal Mengunggah',
-        text2: error.response?.data?.detail || 'Gagal melakukan pemindaian. Pastikan Anda terhubung ke internet.',
+        text2: `Error: ${errMsg}`,
       });
     } finally {
       setIsScanning(false);
