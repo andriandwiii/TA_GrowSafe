@@ -64,20 +64,25 @@ const ScanScreen = () => {
           type: 'image/jpeg',
         } as any);
 
-        const uploadResponse = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
+        const url = `${apiClient.defaults.baseURL}/predict/image`;
+        const token = apiClient.defaults.headers.common['Authorization'];
+        const fetchResponse = await fetch(url, {
           method: 'POST',
+          body: formData,
           headers: {
             'ngrok-skip-browser-warning': 'true',
+            'Accept': 'application/json',
+            ...(token ? { 'Authorization': token } : {}),
           },
-          body: formData,
         });
-
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({}));
-          throw { response: { data: errorData } };
+        
+        const responseData = await fetchResponse.json();
+        
+        if (!fetchResponse.ok) {
+          throw { response: { data: responseData } };
         }
         
-        const newHistoryItem = await uploadResponse.json();
+        const newHistoryItem = responseData;
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
 
       } catch (error: any) {
@@ -138,20 +143,25 @@ const ScanScreen = () => {
           name: 'upload.jpg',
         } as any);
         
-        const uploadResponse = await fetch(`${apiClient.defaults.baseURL}/predict/image`, {
+        const url = `${apiClient.defaults.baseURL}/predict/image`;
+        const token = apiClient.defaults.headers.common['Authorization'];
+        const fetchResponse = await fetch(url, {
           method: 'POST',
+          body: formData,
           headers: {
             'ngrok-skip-browser-warning': 'true',
+            'Accept': 'application/json',
+            ...(token ? { 'Authorization': token } : {}),
           },
-          body: formData,
         });
-
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json().catch(() => ({}));
-          throw { response: { data: errorData } };
+        
+        const responseData = await fetchResponse.json();
+        
+        if (!fetchResponse.ok) {
+          throw { response: { data: responseData } };
         }
         
-        const newHistoryItem = await uploadResponse.json();
+        const newHistoryItem = responseData;
         router.replace(`/detail/${newHistoryItem.id_yolo}` as any);
       }
     } catch (error: any) {
