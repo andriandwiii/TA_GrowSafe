@@ -47,7 +47,7 @@ const ScanScreen = () => {
           return;
         }
 
-        const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, isImageMirror: false });
+        const photo = await cameraRef.current.takePictureAsync();
         
         // Kompres dan ubah ukuran gambar agar pengiriman lebih cepat
         const manipResult = await ImageManipulator.manipulateAsync(
@@ -107,8 +107,6 @@ const ScanScreen = () => {
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.7,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
