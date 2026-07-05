@@ -65,7 +65,7 @@ const ScanScreen = () => {
         } as any);
 
         const url = `${apiClient.defaults.baseURL}/predict/image`;
-        const token = apiClient.defaults.headers.common['Authorization'];
+        const token = apiClient.defaults.headers.common['Authorization'] as string;
         const fetchResponse = await fetch(url, {
           method: 'POST',
           body: formData,
@@ -144,7 +144,7 @@ const ScanScreen = () => {
         } as any);
         
         const url = `${apiClient.defaults.baseURL}/predict/image`;
-        const token = apiClient.defaults.headers.common['Authorization'];
+        const token = apiClient.defaults.headers.common['Authorization'] as string;
         const fetchResponse = await fetch(url, {
           method: 'POST',
           body: formData,
