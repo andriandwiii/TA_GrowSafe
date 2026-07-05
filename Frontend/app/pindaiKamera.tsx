@@ -25,7 +25,6 @@ const { width } = Dimensions.get('window');
 const ScanScreen = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [isCameraReady, setIsCameraReady] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -40,10 +39,6 @@ const ScanScreen = () => {
   }, []);
 
   const handleTakePicture = async () => {
-    if (!isCameraReady) {
-      Toast.show({ type: 'info', text1: 'Sabar', text2: 'Kamera sedang disiapkan...' });
-      return;
-    }
     if (cameraRef.current && !isScanning) {
       setIsScanning(true);
       try {
@@ -52,7 +47,7 @@ const ScanScreen = () => {
           return;
         }
 
-        const photo = await cameraRef.current.takePictureAsync();
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, isImageMirror: false });
         
         // Kompres dan ubah ukuran gambar agar pengiriman lebih cepat
         const manipResult = await ImageManipulator.manipulateAsync(
@@ -84,7 +79,11 @@ const ScanScreen = () => {
       } catch (error: any) {
         const errMsg = error.response?.data?.detail || error.message || String(error);
         console.error('Gagal mengirim gambar:', errMsg);
-        Alert.alert('Gagal Pemindaian', `Error Detail:\n${errMsg}`);
+        Toast.show({
+          type: 'error',
+          text1: 'Gagal Pemindaian',
+          text2: `Error: ${errMsg}`,
+        });
       } finally {
         setIsScanning(false);
       }
@@ -107,7 +106,9 @@ const ScanScreen = () => {
 
     try {
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.7,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -149,7 +150,11 @@ const ScanScreen = () => {
     } catch (error: any) {
       const errMsg = error.response?.data?.detail || error.message || String(error);
       console.error('Gagal mengirim gambar:', errMsg);
-      Alert.alert('Gagal Mengunggah', `Error Detail:\n${errMsg}`);
+      Toast.show({
+        type: 'error',
+        text1: 'Gagal Mengunggah',
+        text2: `Error: ${errMsg}`,
+      });
     } finally {
       setIsScanning(false);
     }
@@ -177,12 +182,7 @@ const ScanScreen = () => {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" backgroundColor="black" />
       
-      <CameraView 
-        style={StyleSheet.absoluteFill} 
-        ref={cameraRef} 
-        facing="back"
-        onCameraReady={() => setIsCameraReady(true)}
-      >
+      <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} facing="back">
         <View style={styles.overlay}>
           {isScanning && <CustomLoading fullScreen message="Menganalisis gambar..." />}
           
