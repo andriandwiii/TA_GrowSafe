@@ -51,6 +51,18 @@
             "./assets/fonts/ionicons.ttf"
           ]
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Growsafe membutuhkan akses kamera untuk memindai jamur."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Growsafe membutuhkan akses ke galeri untuk memilih foto jamur."
+        }
       ]
     ],
     "experiments": {
