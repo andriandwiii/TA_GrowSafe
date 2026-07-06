@@ -21,7 +21,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/GrowsafeLogo.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#2a4241"
       },
       "edgeToEdgeEnabled": true
     },
@@ -41,7 +41,7 @@
           "image": "./assets/images/GrowsafeLogo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#2a4241"
         }
       ],
       "expo-secure-store",
