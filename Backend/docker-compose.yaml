@@ -1,18 +1,31 @@
 version: '3.8'
 
 services:
-  # 1. Container Database MySQL
+  # 1. Container Database MySQL (Sudah Anda buat)
   db:
     image: mysql:8.0
     container_name: growsafe_mysql
     restart: always
     environment:
       MYSQL_DATABASE: growsafe_db
-      MYSQL_ROOT_PASSWORD: rootpassword # Ganti dengan password root pilihanmu
+      MYSQL_ROOT_PASSWORD: rootpassword 
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+
+  # 2. Container phpMyAdmin (TAMBAHKAN INI)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: growsafe_phpmyadmin
+    restart: always
+    ports:
+      - "8080:80" # Akses dari browser melalui port 8080
+    environment:
+      PMA_HOST: db # Nama host harus sama dengan nama service database di atas ('db')
+      MYSQL_ROOT_PASSWORD: 
+    depends_on:
+      - db
 
   # 2. Container Backend FastAPI
   backend:
@@ -25,7 +38,7 @@ services:
       - db
     environment:
       - DB_USER=root
-      - DB_PASSWORD=rootpassword
+      - DB_PASSWORD=
       - DB_HOST=db  # PENTING: Namanya harus 'db', bukan 'localhost'
       - DB_NAME=growsafe_db
 
