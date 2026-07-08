@@ -9,9 +9,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_NAME = os.getenv("DB_NAME", "db_growsafe")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST", "db")
+DB_NAME = os.getenv("DB_NAME", "growsafe_db")
+
+# --- PENGAMAN EKSTRA (KUNCI PENYELESAIAN ERROR) ---
+# Jika dari file .env passwordnya terbaca kosong, paksa pakai "rootpassword"
+if not DB_PASSWORD:
+    DB_PASSWORD = "rootpassword"
+# --------------------------------------------------
 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
