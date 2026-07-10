@@ -5,12 +5,8 @@
 
 import io
 import os
-import sys
 import uuid
 from datetime import datetime, timedelta
-
-# Fix path agar import dari root Backend selalu bisa ditemukan
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi                          import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm                   import Session

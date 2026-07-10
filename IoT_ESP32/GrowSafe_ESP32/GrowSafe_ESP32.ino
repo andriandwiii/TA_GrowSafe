@@ -1,12 +1,13 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <DHT.h>
 #include <ArduinoJson.h>
 #include <esp_task_wdt.h>  // Watchdog Timer bawaan ESP32
 
 // ================= PENGATURAN WIFI =================
-const char* ssid = "Redmi 10";         // Ganti dengan nama WiFi / Hotspot
-const char* password = "andriandwi"; // Ganti dengan password WiFi
+const char* ssid = "Redmi 10 2022";         // Ganti dengan nama WiFi / Hotspot
+const char* password = "drian12345"; // Ganti dengan password WiFi
 
 // ================= PENGATURAN LOKAL GROWSAFE =======
 // Ganti IP di bawah ini dengan IP IPv4 laptop Anda (lihat di cmd -> ipconfig)
@@ -31,10 +32,15 @@ DHT dht(DHTPIN, DHTTYPE);
 
 // ================= VARIABEL GLOBAL =================
 unsigned long previousMillis = 0;
-// Interval pengiriman data: 20 detik (20000 ms)
-// PERHATIAN: ThingSpeak versi gratis memiliki batas limit pengiriman 15 detik!
-// Jadi jangan diatur di bawah 15000 ms.
+// Interval pengecekan sensor: 20 detik (20000 ms)
 const long interval = 20000; 
+
+// --- Variabel Cache untuk Data Deduplication (COV) ---
+float suhu_terakhir = -999.0;
+float kelembaban_terakhir = -999.0;
+int led_terakhir = -1;
+unsigned long lastForceSendMillis = 0; // Waktu terakhir data benar-benar dikirim
+const long forceSendInterval = 300000; // Heartbeat: Paksa kirim setiap 5 menit (300000 ms) walau data sama
 
 int total_menit_led_menyala = 0;
 bool is_led_on = false;
@@ -48,15 +54,10 @@ void setup() {
   Serial.begin(115200);
   
   // ── Aktifkan Watchdog Timer ──────────────────────
-  // Jika program hang/crash selama 30 detik, ESP32 otomatis restart
-  esp_task_wdt_config_t twdt_config = {
-      .timeout_ms = WDT_TIMEOUT * 1000,
-      .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
-      .trigger_panic = true,
-  };
-  esp_task_wdt_init(&twdt_config);
+  // Di ESP32 Core v3, WDT sudah otomatis diinisialisasi oleh sistem.
+  // Kita cukup mendaftarkan task utama ini ke WDT bawaan.
   esp_task_wdt_add(NULL);                // Pantau task utama (loop)
-  Serial.println("✅ Watchdog Timer aktif (30 detik)");
+  Serial.println("✅ Watchdog Timer dipantau");
   
   // Inisialisasi Pin
   pinMode(LED_PIN, OUTPUT);
@@ -187,25 +188,55 @@ void loop() {
       temp_total_led += (current_duration / 60000);
     }
 
-    Serial.println("===================================");
-    Serial.print("Suhu: "); Serial.print(t); Serial.print("°C | ");
-    Serial.print("Kelembaban: "); Serial.print(h); Serial.print("% | ");
-    Serial.print("LED: "); Serial.print(temp_total_led); Serial.println(" menit");
+    // --- LOGIKA FILTERING (COV) ---
+    bool isChanged = false;
+    // Cek apakah suhu berubah >= 0.3°C, atau kelembaban berubah >= 1.0%, atau durasi LED berubah
+    if (abs(t - suhu_terakhir) >= 0.3 || abs(h - kelembaban_terakhir) >= 1.0 || temp_total_led != led_terakhir) {
+      isChanged = true;
+    }
+    
+    // Cek apakah sudah waktunya dipaksa kirim (Heartbeat 5 menit)
+    bool isHeartbeat = (currentMillis - lastForceSendMillis >= forceSendInterval);
 
-    // 1. Kirim ke Backend Lokal GrowSafe
-    sendDataToLocalServer(t, h, temp_total_led);
+    if (isChanged || isHeartbeat) {
+      lastForceSendMillis = currentMillis; // Catat waktu pengiriman terakhir
+      suhu_terakhir = t;
+      kelembaban_terakhir = h;
+      led_terakhir = temp_total_led;
 
-    // 2. Kirim ke Dashboard Cloud ThingSpeak
-    sendDataToThingSpeak(t, h, temp_total_led);
+      Serial.println("===================================");
+      if (isHeartbeat && !isChanged) {
+        Serial.println("💓 [HEARTBEAT] Mengirim data (Data stabil selama 5 menit)...");
+      } else {
+        Serial.println("📈 [UPDATE] Ada perubahan data signifikan, mengirim...");
+      }
+
+      Serial.print("Suhu: "); Serial.print(t); Serial.print("°C | ");
+      Serial.print("Kelembaban: "); Serial.print(h); Serial.print("% | ");
+      Serial.print("LED: "); Serial.print(temp_total_led); Serial.println(" menit");
+
+      // 1. Kirim ke Backend Lokal GrowSafe
+      sendDataToLocalServer(t, h, temp_total_led);
+
+      // 2. Kirim ke Dashboard Cloud ThingSpeak
+      sendDataToThingSpeak(t, h, temp_total_led);
+    } else {
+      // Data stabil, skip pengiriman
+      Serial.println("💤 Data stabil, skip pengiriman (menghemat database & bandwidth).");
+    }
   }
 }
 
 // === FUNGSI 1: Kirim ke Backend FastAPI (MySQL lokal) ===
 void sendDataToLocalServer(float suhu, float kelembaban, int total_led) {
   if (WiFi.status() == WL_CONNECTED) {
+    WiFiClientSecure client;
+    client.setInsecure(); // Bypass verifikasi sertifikat SSL untuk HTTPS
+
     HTTPClient http;
-    http.begin(SERVER_URL);
+    http.begin(client, SERVER_URL);
     http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-API-KEY", "growsafeandrian"); // API Key untuk autentikasi keamanan IoT
     http.setTimeout(10000); // Timeout 10 detik
 
     StaticJsonDocument<200> doc;
@@ -218,11 +249,11 @@ void sendDataToLocalServer(float suhu, float kelembaban, int total_led) {
     serializeJson(doc, requestBody);
 
     int httpResponseCode = http.POST(requestBody);
-    if (httpResponseCode > 0) {
-      Serial.print("[GrowSafe] ✅ Berhasil mengirim! Code: ");
+    if (httpResponseCode == 201 || httpResponseCode == 200) {
+      Serial.print("[GrowSafe] ✅ Data tersimpan di DB! Code: ");
       Serial.println(httpResponseCode);
     } else {
-      Serial.print("[GrowSafe] ❌ Error POST request. Code: ");
+      Serial.print("[GrowSafe] ❌ Gagal menyimpan. Code: ");
       Serial.println(httpResponseCode);
     }
     http.end();

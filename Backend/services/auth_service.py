@@ -5,6 +5,7 @@
 # ===================================================================
 
 import os
+import secrets
 from passlib.context        import CryptContext
 from datetime               import datetime, timedelta, timezone
 from jose                   import JWTError, jwt
@@ -25,8 +26,24 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 # ── Konfigurasi JWT ────────────────────────────────────────────────
-# SECRET_KEY dibaca dari .env untuk keamanan
-SECRET_KEY  = os.getenv("SECRET_KEY", "fallback-secret-for-dev-only")
+# SECRET_KEY WAJIB diset di file .env untuk keamanan.
+# Tanpa SECRET_KEY yang kuat, token JWT bisa dipalsukan oleh pihak luar.
+_secret_key_env = os.getenv("SECRET_KEY", "").strip()
+
+if not _secret_key_env:
+    # Jika SECRET_KEY kosong, generate random key untuk development saja.
+    # PERINGATAN: key ini berubah setiap restart → semua token lama invalid.
+    _secret_key_env = secrets.token_hex(32)
+    print("=" * 60)
+    print("⚠️  PERINGATAN KEAMANAN: SECRET_KEY tidak diset di .env!")
+    print("   Menggunakan key random sementara (berubah tiap restart).")
+    print("   Semua token login akan INVALID setelah server restart.")
+    print("")
+    print("   Solusi: Tambahkan baris berikut ke file .env Anda:")
+    print(f'   SECRET_KEY="{secrets.token_hex(32)}"')
+    print("=" * 60)
+
+SECRET_KEY  = _secret_key_env
 ALGORITHM   = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30  # token berlaku 30 hari
 
@@ -48,7 +65,7 @@ def decode_token(token: str) -> dict:
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        id_pengguna: str = payload.get("id_pengguna")
+        id_pengguna = payload.get("id_pengguna")
         if id_pengguna is None:
             raise credentials_exception
         return payload

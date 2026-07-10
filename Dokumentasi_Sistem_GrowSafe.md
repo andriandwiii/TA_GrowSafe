@@ -44,6 +44,7 @@ Bagian paling inovatif dari GrowSafe adalah integrasi ganda antara Pengenalan Ci
 
 ### B. Machine Learning (Polynomial Regression)
 *   Sistem tidak mengandalkan satu parameter. Data dari **IoT** (suhu, kelembaban, durasi stres/LED) dan data dari **YOLO** (luas infeksi) digabung menjadi satu kesatuan (*Holistic Data*).
+*   **Fase Awareness:** Model AI ini juga mempertimbangkan **Fase Pertumbuhan Jamur** (Inkubasi, Primordia, Produksi) secara otomatis berdasarkan usia *baglog*, menyadari bahwa jamur muda lebih rentan penyakit dibanding jamur dewasa.
 *   Data ini dimasukkan ke dalam model **Polynomial Regression (Degree 2)**. Pendekatan polinomial menangkap pola "Non-Linear". (Contoh: Kenaikan suhu sedikit mungkin tidak masalah, tapi jika suhu terus naik disertai turunnya kelembapan, risiko gagal panen bisa melonjak drastis, tidak sebatas linier/garis lurus).
 *   Model akan mengeluarkan *output*: **Persentase Risiko Black Mold**. 
 *   **Prediksi Panen Matematis:** Persentase risiko tersebut kemudian dimasukkan ke dalam rumus efisiensi untuk menghitung **estimasi kerugian (kg)** dari total panen normal baglog.

@@ -33,6 +33,7 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
   timeout: 30000, // timeout 30 detik (agar YOLO tidak error time-out)
 });

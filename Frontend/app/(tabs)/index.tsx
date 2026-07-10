@@ -155,27 +155,63 @@ const DashboardScreen = () => {
   useFocusEffect(
     useCallback(() => {
       let intervalId: ReturnType<typeof setInterval>;
+      let ws: WebSocket | null = null;
 
-      const initializeAndPoll = async () => {
+      const initializeAndConnect = async () => {
         await loadInitialData();
         await fetchUnreadNotifications();
 
-        // Setelah load initial data, mulai polling setiap 5 detik
-        intervalId = setInterval(async () => {
-          const kId = await SecureStore.getItemAsync('activeKumbungId');
-          if (kId) {
-            // Fetch tanpa memicu loading spinner (silent refresh)
-            await fetchSensorData(kId);
-            await fetchUnreadNotifications();
-          }
-        }, 5000);
+        const kId = await SecureStore.getItemAsync('activeKumbungId');
+        if (kId) {
+          // 1. Koneksi WebSockets untuk data sensor real-time (tanpa polling)
+          const baseUrl = apiClient.defaults.baseURL || 'http://localhost:8000';
+          // Ubah protokol http/https menjadi ws/wss
+          const wsUrl = baseUrl.replace(/^http/, 'ws').replace(/\/$/, '') + `/ws/sensor/${kId}`;
+          
+          ws = new WebSocket(wsUrl);
+          
+          ws.onopen = () => {
+            console.log('🔗 WebSocket terhubung secara Real-Time!');
+          };
+          
+          ws.onmessage = (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              console.log('⚡ Data Instan dari IoT:', data);
+              // Update state UI secara instan (0 delay)
+              const st = getKumbungStatus(data.suhu || 0, data.kelembaban || 0);
+              setSensorData({
+                suhu: data.suhu || 0,
+                kelembaban: data.kelembaban || 0,
+                led: data.total_led_menyala || 0,
+                status: st.status,
+                statusMessage: st.message,
+                theme: st.theme
+              });
+            } catch (err) {
+              console.log('Error parsing WS data', err);
+            }
+          };
+
+          ws.onerror = (e: any) => {
+            console.log('⚠️ WebSocket Error:', e.message);
+          };
+
+          // 2. Polling super lambat khusus notifikasi (30 detik sekali) - Hemat Baterai
+          intervalId = setInterval(() => {
+             fetchUnreadNotifications();
+          }, 30000);
+        }
       };
 
-      initializeAndPoll();
+      initializeAndConnect();
 
       return () => {
-        if (intervalId) {
-          clearInterval(intervalId);
+        // Bersihkan saat user pindah layar (Cleanup)
+        if (intervalId) clearInterval(intervalId);
+        if (ws) {
+          ws.close();
+          console.log('🔌 WebSocket ditutup karena pindah layar.');
         }
       };
     }, [])

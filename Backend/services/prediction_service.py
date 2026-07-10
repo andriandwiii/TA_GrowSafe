@@ -54,7 +54,7 @@ def run_yolo_detection(image: Image.Image) -> dict:
     if yolo_model is None:
         return {"confidence_score": 0.0, "infected_area_percent": 0.0, "plotted_image": None}
     try:
-        results = yolo_model(image, conf=0.25)
+        results = yolo_model(image, conf=0.10)
         if not results or len(results[0].boxes) == 0:
             return {"confidence_score": 0.0, "infected_area_percent": 0.0, "plotted_image": None}
 
@@ -66,9 +66,16 @@ def run_yolo_detection(image: Image.Image) -> dict:
         max_conf = 0.0
         # Buat canvas/mask kosong berukuran gambar (2D array)
         # Menggunakan np.uint8 sangat ringan memori
-        mask = np.zeros((int(h), int(w)), dtype=np.uint8)
+        mask = np.zeros((h, w), dtype=np.uint8)
 
         for box in boxes:
+            class_id = int(box.cls[0])
+            class_name = yolo_model.names[class_id].lower()
+            
+            # Abaikan kotak yang berlabel "healthy" atau "sehat"
+            if "healthy" in class_name or "sehat" in class_name:
+                continue
+                
             conf = float(box.conf)
             max_conf = max(max_conf, conf)
             x1, y1, x2, y2 = box.xyxy[0].tolist()
@@ -76,8 +83,8 @@ def run_yolo_detection(image: Image.Image) -> dict:
             # Konversi koordinat ke integer (batas piksel)
             x1_idx = max(0, int(x1))
             y1_idx = max(0, int(y1))
-            x2_idx = min(int(w), int(x2))
-            y2_idx = min(int(h), int(y2))
+            x2_idx = min(w, int(x2))
+            y2_idx = min(h, int(y2))
             
             # Tandai piksel yang berada dalam kotak sebagai 1 (terinfeksi)
             mask[y1_idx:y2_idx, x1_idx:x2_idx] = 1

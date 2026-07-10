@@ -6,33 +6,36 @@ Dokumen ini menjelaskan secara rinci dan mudah dipahami mengenai logika perhitun
 
 ## 1. Rumus Prediksi Risiko Kontaminasi *Black Mold*
 
-Sistem GrowSafe menghitung persentase "Risiko Kontaminasi" layaknya seorang juri yang memberikan **"Poin Pelanggaran"**. Semakin banyak kondisi buruk yang terjadi di dalam kumbung, semakin banyak poin pelanggaran yang terkumpul. Total poin pelanggaran inilah yang menjadi Persentase Risiko (maksimal 100%).
+Sistem GrowSafe menghitung persentase "Risiko Kontaminasi" layaknya seorang juri yang memberikan **"Poin Pelanggaran"**. Semakin banyak kondisi buruk yang terjadi di dalam kumbung, semakin tinggi persentase risiko (maksimal 100%).
 
-Total Risiko dihitung berdasarkan 4 faktor utama:
-**Total Risiko = (Poin Suhu) + (Poin Kelembaban) + (Poin Stres / Durasi LED) + (Poin Visual Kamera YOLO)**
-
-Berikut adalah rincian cara sistem memberikan poin pada masing-masing faktor:
+Sistem terbaru menggunakan model **Machine Learning (Polynomial Regression)** yang menganalisis 5 faktor utama secara bersamaan (holistik), bukan sekadar penjumlahan linear. Kelima faktor tersebut adalah:
 
 ### A. Poin Suhu (Iklim Mikro)
 Suhu adalah faktor krusial bagi pertumbuhan jamur tiram.
 *   **Zona Aman:** Jika suhu kumbung pas di angka **22°C sampai 28°C**, poinnya adalah **0**.
-*   **Zona Bahaya:** Jika suhu naik di atas 28°C (kepanasan), sistem akan mulai menghitung selisihnya dan memberikan poin pelanggaran. Udara yang terlalu panas melemahkan miselium jamur dan memicu tumbuhnya jamur liar pembawa penyakit.
+*   **Zona Bahaya:** Jika suhu naik di atas 28°C (kepanasan), model AI akan mendeteksi peningkatan risiko. Udara yang terlalu panas melemahkan miselium jamur dan memicu tumbuhnya jamur liar pembawa penyakit.
 
 ### B. Poin Kelembaban
 *   **Zona Aman:** Jika kelembaban pas di angka **80% sampai 90%**, poinnya adalah **0**.
-*   **Zona Bahaya:** Jika kelembaban di atas 90% (terlalu basah/pengap), sistem memberikan poin pelanggaran yang tinggi. Air yang menggenang atau udara yang terlalu basah adalah tempat favorit spora *Black Mold* untuk berkembang biak.
+*   **Zona Bahaya:** Jika kelembaban **di bawah 80%** (terlalu kering), baglog akan kehilangan cairan dan miselium menjadi stres (rentan penyakit). Sebaliknya, jika kelembaban **di atas 90%** (terlalu basah/pengap), risiko juga melonjak tajam karena genangan air adalah tempat favorit spora *Black Mold* untuk berkembang biak secara masif.
 
 ### C. Poin Stres / Durasi LED Menyala
-Ini ibarat *Timer* kerusakan. Setiap 1 menit LED merah menyala (berarti kumbung sedang dalam kondisi suhu/kelembaban yang buruk), sistem akan menambahkan sedikit poin pelanggaran.
-*   **Logikanya:** Jika kumbung hanya kepanasan selama 5 menit lalu dingin lagi, jamur masih kuat bertahan. Namun jika kepanasan dibiarkan selama berjam-jam, poin stres ini akan terus menumpuk dan menaikkan persentase risiko kontaminasi secara perlahan tapi pasti.
+Ini ibarat *Timer* kerusakan. Setiap 1 menit LED merah (aktuator) menyala, sistem mencatat bahwa kumbung sedang dalam kondisi suhu/kelembaban yang buruk di luar batas wajar.
+*   **Logikanya:** Jika kepanasan hanya 5 menit lalu normal kembali, jamur masih kuat bertahan. Namun jika stres dibiarkan berjam-jam, poin ini akan memperparah kalkulasi risiko.
 
-### D. Poin Visual Kamera / YOLO (Bobot Tertinggi)
+### D. Poin Visual Kamera / YOLO (Bobot Bukti Fisik)
 Ini adalah bukti fisik terkuat dari sistem GrowSafe. 
-*   Jika dari hasil foto kamera terdeteksi ada area baglog yang sudah menghitam (*Black Mold*), sistem akan langsung memberikan poin pelanggaran yang sangat besar (hampir 1 banding 1).
-*   **Logikanya:** Jika kamera sudah bisa melihat warna hitam, berarti penyakitnya *sudah benar-benar ada secara fisik*, bukan lagi sekadar potensi dari udara.
+*   Hasil foto kamera mendeteksi persentase area baglog yang menghitam (*Black Mold*). Semakin luas area yang menghitam secara visual, semakin besar risikonya. Sistem menggunakan *Pixel Mask Union* agar perhitungan luas ini akurat.
 
-**Contoh Kasus Kesimpulan AI:**
-*"Suhu dan kelembaban kumbung sangat ideal (Poin = 0). Tapi waktu difoto, ternyata ada bercak hitam terdeteksi sedikit (Poin YOLO = 15). Maka sistem menyimpulkan risiko kumbung adalah 15% (Aman/Rendah). Namun, jika besoknya suhu berubah jadi sangat panas dan pengap, sistem akan menambahkan Poin Suhu dan Poin Kelembaban, sehingga risikonya melonjak menjadi 60% (Bahaya). Artinya, penyakit 15% tadi akan menyebar dengan sangat cepat akibat udara yang kini memburuk."*
+### E. Fase Pertumbuhan Jamur (Fitur AI Terbaru)
+Model AI kini cerdas membedakan fase usia baglog:
+*   **Inkubasi (Masa rentan awal):** Spora jamur tiram masih lemah. Jika terjadi kondisi buruk, risikonya lebih fatal dibanding saat jamur sudah dewasa.
+*   **Primordia (Muncul bakal jamur):** Sensitif terhadap perubahan mendadak.
+*   **Produksi (Panen):** Miselium sudah kuat menutupi baglog, daya tahan alami lebih tinggi.
+
+**Sinergi Polinomial (Efek Berlipat Ganda):**
+Karena menggunakan AI berjenis *Polynomial*, sistem memahami efek "Kombinasi". 
+*Contoh: Jika suhu sedikit panas, risikonya mungkin naik 5%. Jika kelembaban sedikit tinggi, naik 5%. TAPI, jika kumbung PANAS **sekaligus** PENGAP, model AI polinomial akan mendeteksinya sebagai kondisi ledakan spora yang sangat kritis, dan poin risikonya bisa melonjak drastis menjadi 60% (bukan sekadar 5+5=10%). Kombinasi inilah yang membuat AI GrowSafe sangat akurat menyerupai logika biologis asli.*
 
 ---
 
